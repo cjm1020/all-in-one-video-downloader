@@ -5,6 +5,7 @@ import Icon from '../components/Icon.vue'
 import KnowledgeSearch from '../components/KnowledgeSearch.vue'
 import TaskMarkers from '../components/TaskMarkers.vue'
 import StudyCards from '../components/StudyCards.vue'
+import CardReview from '../components/CardReview.vue'
 import { api, duration, message, navigate, notify, refresh, store } from '../store'
 import type { TaskDetail } from '../types'
 
@@ -21,6 +22,7 @@ const filtered = computed(() =>
   available.value.filter((t) => t.title.toLowerCase().includes(filter.value.toLowerCase())),
 )
 const selectedPosition = ref<number | null>(null)
+const reviewKey = ref(0)
 async function selectResult(id: string, position: number | null) {
   selectedPosition.value = position
   await select(id)
@@ -107,6 +109,7 @@ onMounted(() => {
     </span>
   </div>
   <KnowledgeSearch @select="selectResult" />
+  <CardReview :refresh-key="reviewKey" @select="selectResult($event, null)" />
   <div class="learning-banner">
     <span class="feature-icon lavender"><Icon name="sparkles" :size="23" /></span>
     <div>
@@ -248,7 +251,7 @@ onMounted(() => {
           "
         />
         <TaskMarkers :task="detail" :position="selectedPosition" />
-        <StudyCards :task="detail" />
+        <StudyCards :task="detail" @changed="reviewKey++" />
         <div v-if="detail.notes" class="learning-notes">
           <h3>
             <Icon name="file" :size="15" />
