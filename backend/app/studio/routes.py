@@ -1,8 +1,9 @@
 from fastapi import APIRouter
+from fastapi.responses import Response
 
 from .. import db
 from ..security import validate_public_url
-from . import storage, workflows
+from . import exports, storage, workflows
 from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch, WorkflowCreate, WorkflowRun
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
@@ -70,3 +71,10 @@ def delete_workflow(workflow_id: str):
 def run_workflow(workflow_id: str, data: WorkflowRun):
     urls = [validate_public_url(url) for url in data.urls]
     return workflows.run_workflow(workflow_id, urls, data.project_id)
+
+
+@router.get("/projects/{project_id}/export")
+def export_project(project_id: str, format: str = "json"):
+    body, media_type, suffix = exports.export_project(project_id, format)
+    return Response(body, media_type=media_type,
+                    headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.{suffix}"'})
