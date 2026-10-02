@@ -196,3 +196,7 @@ app.include_router(status_router)
 from .studio.routes import router as studio_router  # noqa: E402
 
 app.include_router(studio_router)
+
+from .knowledge import router as knowledge_router  # noqa: E402
+
+app.include_router(knowledge_router)
