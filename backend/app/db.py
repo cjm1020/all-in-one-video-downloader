@@ -16,6 +16,7 @@ def connection():
     config.data_dir.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(config.db_path, timeout=20)
     conn.row_factory = sqlite3.Row
+    conn.create_function("unicode_casefold", 1, lambda value: (value or "").casefold(), deterministic=True)
     conn.execute("PRAGMA foreign_keys=ON")
     try:
         yield conn

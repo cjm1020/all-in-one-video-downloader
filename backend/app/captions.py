@@ -26,18 +26,19 @@ def parse_captions(text: str) -> list[dict]:
             lines.clear()
 
     source_lines = text.replace("\r", "").lstrip("\ufeff").splitlines()
+    is_vtt = bool(source_lines and source_lines[0].strip().startswith("WEBVTT"))
     for index, raw in enumerate(source_lines):
         line = raw.strip()
         if not line:
             flush()
             start, end, skipping = None, None, False
             continue
-        if line.startswith(("NOTE", "STYLE", "REGION")):
+        if is_vtt and start is None and not lines and re.fullmatch(r"NOTE(?:[ \t].*)?|STYLE|REGION", line):
             flush()
             skipping = True
         if skipping:
             continue
-        if line.startswith(("WEBVTT", "Kind:", "Language:", "X-TIMESTAMP-MAP")) or line.isdigit():
+        if is_vtt and start is None and line.startswith(("WEBVTT", "Kind:", "Language:", "X-TIMESTAMP-MAP")):
             continue
         match = TIMING.search(line)
         if match:
@@ -49,7 +50,7 @@ def parse_captions(text: str) -> list[dict]:
             except ValueError:
                 start, end = None, None
             continue
-        if "-->" in line:
+        if is_vtt and "-->" in line:
             flush()
             start, end = None, None
             continue

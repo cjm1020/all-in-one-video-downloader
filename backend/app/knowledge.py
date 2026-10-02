@@ -19,17 +19,17 @@ router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
 @router.get("/search")
 def search(q: str = Query(min_length=1, max_length=100), limit: int = Query(default=20, ge=1, le=100)):
-    query = q.strip().lower()
+    query = q.strip().casefold()
     if not query:
         raise HTTPException(422, "请输入要检索的字幕关键词")
     with db.connection() as conn:
         # instr treats wildcard and SQL punctuation as literal query characters.
         sql = """SELECT c.task_id,t.title,c.text,c.start,c.end,t.updated_at,c.ordinal
             FROM transcript_cues c JOIN tasks t ON t.id=c.task_id
-            WHERE instr(lower(c.text),?)>0
+            WHERE instr(unicode_casefold(c.text),?)>0
             UNION ALL
             SELECT t.id,t.title,t.transcript,NULL,NULL,t.updated_at,0 FROM tasks t
-            WHERE t.transcript<>'' AND instr(lower(t.transcript),?)>0
+            WHERE t.transcript<>'' AND instr(unicode_casefold(t.transcript),?)>0
             AND NOT EXISTS(SELECT 1 FROM transcript_cues c WHERE c.task_id=t.id)"""
         total = conn.execute(f"SELECT COUNT(*) FROM ({sql})", (query, query)).fetchone()[0]
         rows = conn.execute(
@@ -38,7 +38,13 @@ def search(q: str = Query(min_length=1, max_length=100), limit: int = Query(defa
         results = []
         for row in rows:
             text = row["text"]
-            position = text.lower().find(query)
+            folded_position = text.casefold().find(query)
+            position, folded_length = 0, 0
+            for char in text:
+                if folded_length >= folded_position:
+                    break
+                folded_length += len(char.casefold())
+                position += 1
             offset = max(0, position - 100)
             snippet = text[offset:offset + 500]
             results.append({

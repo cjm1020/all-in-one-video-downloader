@@ -50,6 +50,23 @@ def test_legacy_transcript_search_and_replacement(client, task):
     assert client.get("/api/knowledge/search", params={"q": "证据"}).json()["total"] == 0
 
 
+def test_txt_and_caption_bodies_preserve_notes_and_numbers(client, task):
+    text = "NOTE: Verify the customer license before delivery.\n2026\n47\nAttribution is mandatory."
+    assert caption_text(parse_captions(text)) == text
+    timed = "WEBVTT\n\n1\n00:00:01.000 --> 00:00:04.000\nNOTE: This is spoken text.\n2026"
+    cues = parse_captions(timed)
+    assert cues[0]["text"] == "NOTE: This is spoken text.\n2026" and cues[0]["start"] == 1
+    assert import_source(client, task, text)["transcript"] == text
+
+
+@pytest.mark.parametrize("text,query", [("Évaluation professionnelle", "Évaluation"),
+                                       ("Überprüfung", "überprüfung"), ("Straße", "STRASSE")])
+def test_search_uses_consistent_unicode_casefold(client, task, text, query):
+    import_source(client, task, text)
+    response = client.get("/api/knowledge/search", params={"q": query}).json()
+    assert response["total"] == 1 and response["results"][0]["text"] == text
+
+
 def test_marker_bounds_order_delete_and_task_cascade(client, task):
     db.update_task(task["id"], {"duration": 10})
     path = f"/api/knowledge/tasks/{task['id']}/markers"
