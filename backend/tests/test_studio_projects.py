@@ -20,3 +20,25 @@ def test_project_input_bounds_and_missing_project(client):
                    {"due_at": "2026-12-01T18:00:00"}, {"name": "a" * 121}, {"status": "delivered"}):
         assert client.post("/api/studio/projects", json={"name": "项目", **values}).status_code == 422
     assert client.get("/api/studio/projects/missing").status_code == 404
+
+
+def test_project_patch_clears_deadline_and_preserves_other_fields(client):
+    created = project(client, budget_cents=30000, due_at="2026-12-01T18:00:00Z")
+    endpoint = f"/api/studio/projects/{created['id']}"
+    edited = client.patch(endpoint, json={"name": " 新名称 ", "due_at": None, "status": "active"})
+    assert edited.status_code == 200
+    assert edited.json()["name"] == "新名称"
+    assert edited.json()["due_at"] is None
+    assert edited.json()["budget_cents"] == 30000
+    assert client.patch(endpoint, json={"budget_cents": None}).status_code == 400
+    assert client.patch(endpoint, json={"name": "  "}).status_code == 400
+    assert client.patch(endpoint, json={"status": "delivered"}).status_code == 409
+
+
+def test_project_deletion_preserves_tasks_and_other_projects(client, task):
+    first, second = project(client), project(client, name="另一项目")
+    assert client.delete(f"/api/studio/projects/{first['id']}").status_code == 200
+    assert client.get(f"/api/studio/projects/{first['id']}").status_code == 404
+    assert client.get(f"/api/studio/projects/{second['id']}").status_code == 200
+    assert client.get(f"/api/tasks/{task['id']}").status_code == 200
+    assert client.delete("/api/studio/projects/missing").status_code == 404

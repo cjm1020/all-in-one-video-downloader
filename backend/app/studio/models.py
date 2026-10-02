@@ -31,3 +31,29 @@ class ProjectCreate(StudioModel):
         if value is not None and value.tzinfo is None:
             raise ValueError("截止日期需要包含时区")
         return value.astimezone(timezone.utc) if value else None
+
+
+class ProjectPatch(StudioModel):
+    name: str | None = Field(None, min_length=1, max_length=120)
+    client: str | None = Field(None, max_length=120)
+    budget_cents: int | None = Field(None, ge=0, le=1_000_000_000_000)
+    due_at: datetime | None = None
+    notes: str | None = Field(None, max_length=20000)
+    status: ProjectStatus | None = None
+
+    @field_validator("name", "client")
+    @classmethod
+    def trim_patch_labels(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else value
+
+    @field_validator("due_at")
+    @classmethod
+    def patch_deadline(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("截止日期需要包含时区")
+        return value.astimezone(timezone.utc) if value else None
+
+
+class ItemReplace(StudioModel):
+    task_ids: list[str] = Field(max_length=500)
+

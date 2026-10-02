@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from . import storage
-from .models import ProjectCreate
+from .models import ProjectCreate, ProjectPatch
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
 
@@ -19,3 +19,14 @@ def create_project(data: ProjectCreate):
 @router.get("/projects/{project_id}")
 def project_detail(project_id: str):
     return storage.project_detail(project_id)
+
+
+@router.patch("/projects/{project_id}")
+def patch_project(project_id: str, data: ProjectPatch):
+    return storage.patch_project(project_id, data)
+
+
+@router.delete("/projects/{project_id}")
+def delete_project(project_id: str):
+    storage.delete_project(project_id)
+    return {"ok": True}
