@@ -26,6 +26,11 @@ try {
         await page.locator('.summary-card').waitFor()
       }
     }
+    if (name === 'studio') {
+      await page.locator('.project-content, .empty-state').first().waitFor()
+      await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'))
+    }
+    if (name === 'insights') await page.locator('.estimate-panel').waitFor()
     await page.screenshot({ path: path.join(root, `${name}.png`), fullPage: true })
   }
   await page.setViewportSize({ width: 390, height: 844 })
@@ -34,6 +39,8 @@ try {
   await page.screenshot({ path: path.join(root, 'mobile.png'), fullPage: true })
   await page.goto(`${base}/#studio`, { waitUntil: 'domcontentloaded' })
   await page.locator('.page-heading').waitFor()
+  await page.locator('.project-content, .empty-state').first().waitFor()
+  await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'))
   await page.screenshot({ path: path.join(root, 'mobile-studio.png'), fullPage: true })
   console.log(`Screenshots saved to ${root}`)
 } finally {
