@@ -98,6 +98,7 @@ cd ../frontend
 npm run build
 npm run test:e2e                      # 需要正在运行的 Docker 服务与浏览器
 # 项目根目录：运行商业流程及真实 CC0 交付验收
+cd ..
 python scripts/verify_commercial.py
 python scripts/verify_delivery.py --media-url https://raw.githubusercontent.com/mdn/interactive-examples/main/live-examples/media/cc0-videos/flower.mp4
 python scripts/audit_history.py --minimum 51 --output artifacts/history-audit.json

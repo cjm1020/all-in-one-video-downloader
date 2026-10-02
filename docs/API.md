@@ -77,7 +77,9 @@
 
 授权类型支持 `unknown`、`owned`、`cc0`、`cc-by`、`permission`。CC BY 必须填写署名，单独授权必须填写证据链接，unknown 不允许 verified=true。系统保存负责人核验结果，不自动判定版权归属；证据链接只做 URL 格式与地址校验，不抓取页面。返回值包含 task_id 和 updated_at，更新请求只传上述四个输入字段。
 
-配方支持 `name`、`description`、`preset`、`collection_id`、`tags`、`rate_limit`。运行请求为 `{"urls":["https://example.com/owned.mp4"],"project_id":null}`，最多 30 个链接，全部通过公网 URL 校验后事务入库。响应为 `added` 和 `skipped`；重复项保持原任务的资料和关联。合集被删除后，自定义配方回退到 inbox。向已交付项目运行配方返回 409。
+配方支持 `name`、`description`、`preset`、`collection_id`、`tags`、`rate_limit`。运行请求为 `{"urls":["https://example.com/owned.mp4"],"project_id":null}`，最多 100 个链接，全部通过公网 URL 校验后事务入库。响应为 `added` 和 `skipped`；重复项保持原任务的资料和关联。合集被删除后，自定义配方回退到 inbox。向已交付项目运行配方返回 409。
+
+交付检查还会验证每份已完成媒体的实际文件存在、非空且位于该任务目录内。素材返回 `media_ready` / `media_issue`，文件缺失时不能标记交付。ZIP 最多 100 份素材、512 MiB 实际文件及清单总量、两个并发传输；超过容量返回 413，传输繁忙返回 429。清单包含包内路径、实际字节数及 SHA-256；CSV 对可能被表格程序解释为公式的字段加前缀。资料导出最多 8 MiB。
 
 ## 字幕证据与复习
 
