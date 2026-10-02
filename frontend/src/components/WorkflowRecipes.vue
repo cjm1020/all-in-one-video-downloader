@@ -74,15 +74,14 @@ async function run() {
   error.value = ''
   result.value = null
   try {
+    const links = urls.value.split(/\r?\n/).map((t) => t.trim()).filter(Boolean)
+    if (links.length > 100) throw new Error('每次最多运行 100 个链接，请分批处理')
     const outcome = await api<{ added: Task[]; skipped: string[] }>(
       `/studio/workflows/${chosen.value.id}/run`,
       {
         method: 'POST',
         body: JSON.stringify({
-          urls: urls.value
-            .split(/\r?\n/)
-            .map((t) => t.trim())
-            .filter(Boolean),
+          urls: links,
           project_id: projectId.value || null,
         }),
       },
@@ -226,6 +225,7 @@ onMounted(load)
         视频链接（每行一个）
         <textarea v-model="urls" rows="6" required maxlength="100000" placeholder="https://…"></textarea>
       </label>
+      <p class="recipe-intro">每次最多 100 个链接；重复链接会跳过。</p>
       <label class="field">
         关联交付项目
         <select v-model="projectId">

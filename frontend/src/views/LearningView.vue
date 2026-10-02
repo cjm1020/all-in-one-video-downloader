@@ -15,7 +15,9 @@ const transcript = ref(''),
   importing = ref(false),
   busy = ref(''),
   loading = ref(false)
-const available = computed(() => store.tasks.filter((t) => t.status === 'completed'))
+const available = computed(() =>
+  store.tasks.filter((t) => t.status === 'completed' || t.has_transcript),
+)
 const filter = ref(''),
   showTranscript = ref(false)
 const filtered = computed(() =>

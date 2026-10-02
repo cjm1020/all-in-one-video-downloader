@@ -115,12 +115,12 @@ onMounted(() => {
         片段书签
         <span class="section-caption">{{ markers.length }}</span>
       </h3>
-      <button class="text-link" :aria-expanded="open" @click="open = !open">
+      <button v-if="task.status === 'completed'" class="text-link" :aria-expanded="open" @click="open = !open">
         {{ open ? '收起播放器' : '打开播放器' }}
         <Icon name="down" :size="13" />
       </button>
     </div>
-    <template v-if="open">
+    <template v-if="open && task.status === 'completed'">
       <audio
         v-if="task.preset === 'audio'"
         :key="task.id"
@@ -142,6 +142,7 @@ onMounted(() => {
       ></video>
     </template>
     <p class="hint">为值得回看的片段标记时间，记录想法，再从书签回到原视频。</p>
+    <p v-if="task.status !== 'completed'" class="hint waiting">媒体下载完成后，可以播放并定位片段。当前仍可根据字幕编辑书签与复习卡。</p>
     <div class="marker-list">
       <article v-for="marker in markers" :key="marker.id" :class="['marker', marker.color]">
         <button
@@ -179,7 +180,7 @@ onMounted(() => {
           <input v-model="form.label" required maxlength="120" placeholder="这个观点值得再看" />
         </label>
       </div>
-      <button v-if="open" class="text-link use-position" type="button" @click="fromPlayer">
+      <button v-if="open && task.status === 'completed'" class="text-link use-position" type="button" @click="fromPlayer">
         <Icon name="clock" :size="12" />
         使用播放器当前位置
       </button>
@@ -221,6 +222,12 @@ h3 {
   font-size: 10px;
   color: var(--muted);
   margin: 12px 0 16px;
+}
+.waiting {
+  padding: 12px;
+  background: #fbf6ec;
+  border-radius: 8px;
+  color: #a08d6e;
 }
 video,
 audio {
