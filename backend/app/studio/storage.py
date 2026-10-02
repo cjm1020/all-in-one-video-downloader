@@ -53,10 +53,49 @@ def project_detail(project_id: str) -> dict:
 
 
 def project_items(conn, project_id: str) -> list[dict]:
-    return [db.serialize(row) for row in conn.execute(
-        """SELECT t.* FROM tasks t JOIN studio_project_items i ON i.task_id=t.id
-        WHERE i.project_id=? ORDER BY t.created_at, t.id""", (project_id,)
-    )]
+    items = []
+    for row in conn.execute(
+        """SELECT t.*,r.license,r.attribution,r.evidence_url,r.verified,r.updated_at AS rights_updated_at
+        FROM tasks t JOIN studio_project_items i ON i.task_id=t.id
+        LEFT JOIN studio_rights r ON r.task_id=t.id WHERE i.project_id=? ORDER BY t.created_at, t.id""",
+        (project_id,),
+    ):
+        item = db.serialize(row)
+        item["rights"] = {
+            "task_id": item["id"], "license": item.pop("license") or "unknown",
+            "attribution": item.pop("attribution") or "", "evidence_url": item.pop("evidence_url") or "",
+            "verified": bool(item.pop("verified")), "updated_at": item.pop("rights_updated_at"),
+        }
+        items.append(item)
+    return items
+
+
+def require_task(conn, task_id: str):
+    if not conn.execute("SELECT id FROM tasks WHERE id=?", (task_id,)).fetchone():
+        raise HTTPException(404, "素材不存在")
+
+
+def get_rights(conn, task_id: str) -> dict:
+    require_task(conn, task_id)
+    row = conn.execute("SELECT * FROM studio_rights WHERE task_id=?", (task_id,)).fetchone()
+    result = dict(row) if row else {"task_id": task_id, "license": "unknown", "attribution": "",
+                                  "evidence_url": "", "verified": False, "updated_at": None}
+    result["verified"] = bool(result["verified"])
+    return result
+
+
+def set_rights(task_id: str, data) -> dict:
+    with db.connection() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        require_task(conn, task_id)
+        conn.execute(
+            """INSERT INTO studio_rights VALUES (?,?,?,?,?,?) ON CONFLICT(task_id) DO UPDATE SET
+            license=excluded.license, attribution=excluded.attribution, evidence_url=excluded.evidence_url,
+            verified=excluded.verified, updated_at=excluded.updated_at""",
+            (task_id, data.license, data.attribution, data.evidence_url, int(data.verified), db.now()),
+        )
+        record(conn, "rights.updated", task_id, {"license": data.license, "verified": data.verified})
+        return get_rights(conn, task_id)
 
 
 def replace_items(project_id: str, task_ids: list[str]) -> dict:

@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from ..security import normalize_url
 
 ProjectStatus = Literal["draft", "active", "delivered"]
 
@@ -57,3 +59,26 @@ class ProjectPatch(StudioModel):
 class ItemReplace(StudioModel):
     task_ids: list[str] = Field(max_length=500)
 
+
+class RightsPatch(StudioModel):
+    license: Literal["unknown", "owned", "cc0", "cc-by", "permission"]
+    attribution: str = Field("", max_length=5000)
+    evidence_url: str = Field("", max_length=2048)
+    verified: bool = False
+
+    @field_validator("attribution", "evidence_url")
+    @classmethod
+    def trim_rights(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validate_evidence(self):
+        if self.license == "unknown" and self.verified:
+            raise ValueError("未知授权不能标记为已审核")
+        if self.license == "cc-by" and not self.attribution:
+            raise ValueError("CC BY 素材需要填写作者、来源和许可署名")
+        if self.license == "permission" and not self.evidence_url:
+            raise ValueError("单独授权素材需要提供授权证据链接")
+        if self.evidence_url:
+            self.evidence_url = normalize_url(self.evidence_url)
+        return self

@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
+from .. import db
 from . import storage
-from .models import ItemReplace, ProjectCreate, ProjectPatch
+from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
 
@@ -35,3 +36,14 @@ def delete_project(project_id: str):
 @router.put("/projects/{project_id}/items")
 def replace_items(project_id: str, data: ItemReplace):
     return storage.replace_items(project_id, data.task_ids)
+
+
+@router.get("/rights/{task_id}")
+def get_rights(task_id: str):
+    with db.connection() as conn:
+        return storage.get_rights(conn, task_id)
+
+
+@router.put("/rights/{task_id}")
+def set_rights(task_id: str, data: RightsPatch):
+    return storage.set_rights(task_id, data)
