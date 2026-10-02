@@ -2,10 +2,16 @@ def test_builtin_recipes_and_custom_workflow_persistence(client):
     builtins = client.get("/api/studio/workflows").json()
     assert len(builtins) == 4
     assert all(recipe["builtin"] for recipe in builtins)
-    created = client.post("/api/studio/workflows", json={
-        "name": "  采访参考  ", "description": "采访准备", "preset": "audio",
-        "tags": [" 采访 ", "采访", ""], "rate_limit": 512,
-    })
+    created = client.post(
+        "/api/studio/workflows",
+        json={
+            "name": "  采访参考  ",
+            "description": "采访准备",
+            "preset": "audio",
+            "tags": [" 采访 ", "采访", ""],
+            "rate_limit": 512,
+        },
+    )
     assert created.status_code == 201
     workflow = created.json()
     assert workflow["name"] == "采访参考" and workflow["tags"] == ["采访"]
@@ -55,9 +61,15 @@ def test_invalid_batch_or_missing_project_creates_no_partial_tasks(client):
 
 def test_custom_recipe_runs_after_destination_collection_deleted(client):
     collection = client.post("/api/collections", json={"name": "旧合集"}).json()
-    recipe = client.post("/api/studio/workflows", json={
-        "name": "可迁移工作流", "preset": "commute", "rate_limit": 256, "collection_id": collection["id"],
-    }).json()
+    recipe = client.post(
+        "/api/studio/workflows",
+        json={
+            "name": "可迁移工作流",
+            "preset": "commute",
+            "rate_limit": 256,
+            "collection_id": collection["id"],
+        },
+    ).json()
     client.delete(f"/api/collections/{collection['id']}")
     response = client.post(f"/api/studio/workflows/{recipe['id']}/run", json={"urls": ["https://example.com/new"]})
     assert response.status_code == 200

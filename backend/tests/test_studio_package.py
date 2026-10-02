@@ -11,7 +11,9 @@ def package_project(client, task, content=b"licensed media"):
     root = package.config.media_dir / task["id"]
     root.mkdir()
     (root / "source.mp4").write_bytes(content)
-    db.update_task(task["id"], {"status": "completed", "file_path": f"{task['id']}/source.mp4", "title": "../客户/片段"})
+    db.update_task(
+        task["id"], {"status": "completed", "file_path": f"{task['id']}/source.mp4", "title": "../客户/片段"}
+    )
     project = client.post("/api/studio/projects", json={"name": "安全交付"}).json()
     client.put(f"/api/studio/projects/{project['id']}/items", json={"task_ids": [task["id"]]})
     client.put(f"/api/studio/rights/{task['id']}", json={"license": "owned", "verified": True})
@@ -31,8 +33,14 @@ def test_delivery_zip_contains_manifest_rights_and_actual_safe_media(client, tas
         assert archive.read(media) == b"licensed media"
         manifest = json.loads(archive.read("manifest.json"))
         assert manifest["checklist"]["ready"]
-        assert manifest["files"] == [{"task_id": task["id"], "path": media, "size_bytes": len(b"licensed media"),
-                                      "sha256": hashlib.sha256(b"licensed media").hexdigest()}]
+        assert manifest["files"] == [
+            {
+                "task_id": task["id"],
+                "path": media,
+                "size_bytes": len(b"licensed media"),
+                "sha256": hashlib.sha256(b"licensed media").hexdigest(),
+            }
+        ]
         assert "file_path" not in archive.read("manifest.json").decode()
     # Slots and temporary files are released when the response finishes.
     assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 200

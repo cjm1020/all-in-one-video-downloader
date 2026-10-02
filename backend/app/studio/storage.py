@@ -27,8 +27,14 @@ def create_project(data) -> dict:
             """INSERT INTO studio_projects
             (id,name,client,budget_cents,due_at,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)""",
             (
-                project_id, data.name, data.client, data.budget_cents,
-                data.due_at.isoformat() if data.due_at else None, data.notes, timestamp, timestamp,
+                project_id,
+                data.name,
+                data.client,
+                data.budget_cents,
+                data.due_at.isoformat() if data.due_at else None,
+                data.notes,
+                timestamp,
+                timestamp,
             ),
         )
         record(conn, "project.created", project_id, {"name": data.name})
@@ -37,13 +43,21 @@ def create_project(data) -> dict:
 
 def list_projects() -> list[dict]:
     with db.connection() as conn:
-        conn.execute("BEGIN")
         result = []
-        for row in conn.execute("SELECT * FROM studio_projects ORDER BY created_at DESC, id"):
+        for row in conn.execute("""SELECT p.*,COUNT(t.id) AS item_count,
+            COALESCE(SUM(t.status='completed'),0) AS completed_count,
+            COALESCE(SUM(r.verified=1 AND r.license!='unknown'
+                AND (r.license!='cc-by' OR trim(r.attribution)!='')
+                AND (r.license!='permission' OR trim(r.evidence_url)!='')),0) AS licensed_count
+            FROM studio_projects p LEFT JOIN studio_project_items i ON i.project_id=p.id
+            LEFT JOIN tasks t ON t.id=i.task_id LEFT JOIN studio_rights r ON r.task_id=t.id
+            GROUP BY p.id ORDER BY p.created_at DESC,p.id"""):
             project = dict(row)
-            checks = checklist(project_items(conn, project["id"]))
-            project.update(item_count=checks["total"], completed_count=checks["completed"],
-                           licensed_count=checks["licensed"], ready=checks["ready"])
+            project["ready"] = bool(
+                project["item_count"]
+                and project["completed_count"] == project["item_count"]
+                and project["licensed_count"] == project["item_count"]
+            )
             result.append(project)
         return result
 
@@ -55,9 +69,12 @@ def project_detail(project_id: str) -> dict:
 
 
 def rights_valid(rights: dict) -> bool:
-    return bool(rights["verified"] and rights["license"] != "unknown"
-                and (rights["license"] != "cc-by" or rights["attribution"].strip())
-                and (rights["license"] != "permission" or rights["evidence_url"].strip()))
+    return bool(
+        rights["verified"]
+        and rights["license"] != "unknown"
+        and (rights["license"] != "cc-by" or rights["attribution"].strip())
+        and (rights["license"] != "permission" or rights["evidence_url"].strip())
+    )
 
 
 def checklist(items: list[dict]) -> dict:
@@ -74,8 +91,13 @@ def checklist(items: list[dict]) -> dict:
             issues.append({"task_id": item["id"], "reason": "素材授权尚未审核或凭证不完整"})
     if not items:
         issues.append({"task_id": None, "reason": "请先添加项目素材"})
-    return {"total": len(items), "completed": completed, "licensed": licensed,
-            "ready": bool(items) and not issues, "issues": issues}
+    return {
+        "total": len(items),
+        "completed": completed,
+        "licensed": licensed,
+        "ready": bool(items) and not issues,
+        "issues": issues,
+    }
 
 
 def project_snapshot(conn, project_id: str) -> dict:
@@ -94,9 +116,12 @@ def project_items(conn, project_id: str) -> list[dict]:
     ):
         item = db.serialize(row)
         item["rights"] = {
-            "task_id": item["id"], "license": item.pop("license") or "unknown",
-            "attribution": item.pop("attribution") or "", "evidence_url": item.pop("evidence_url") or "",
-            "verified": bool(item.pop("verified")), "updated_at": item.pop("rights_updated_at"),
+            "task_id": item["id"],
+            "license": item.pop("license") or "unknown",
+            "attribution": item.pop("attribution") or "",
+            "evidence_url": item.pop("evidence_url") or "",
+            "verified": bool(item.pop("verified")),
+            "updated_at": item.pop("rights_updated_at"),
         }
         items.append(item)
     return items
@@ -110,8 +135,18 @@ def require_task(conn, task_id: str):
 def get_rights(conn, task_id: str) -> dict:
     require_task(conn, task_id)
     row = conn.execute("SELECT * FROM studio_rights WHERE task_id=?", (task_id,)).fetchone()
-    result = dict(row) if row else {"task_id": task_id, "license": "unknown", "attribution": "",
-                                  "evidence_url": "", "verified": False, "updated_at": None}
+    result = (
+        dict(row)
+        if row
+        else {
+            "task_id": task_id,
+            "license": "unknown",
+            "attribution": "",
+            "evidence_url": "",
+            "verified": False,
+            "updated_at": None,
+        }
+    )
     result["verified"] = bool(result["verified"])
     return result
 

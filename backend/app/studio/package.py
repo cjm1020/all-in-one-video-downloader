@@ -71,8 +71,11 @@ def build_package(project_id: str):
             # File handles keep the sources stable; release the database read
             # snapshot while copying so workers can publish download progress.
             conn.commit()
-            documents = {"manifest.json": json_manifest(snapshot), "README.md": markdown_manifest(snapshot),
-                         "rights.csv": csv_manifest(snapshot)}
+            documents = {
+                "manifest.json": json_manifest(snapshot),
+                "README.md": markdown_manifest(snapshot),
+                "rights.csv": csv_manifest(snapshot),
+            }
             if expected_bytes + sum(len(value) for value in documents.values()) > MAX_PACKAGE_BYTES:
                 raise HTTPException(413, "素材与资料总量超过交付包限制，请拆分项目")
             copied_bytes = 0
@@ -91,12 +94,21 @@ def build_package(project_id: str):
                             destination.write(chunk)
                     final_stat = os.fstat(source.fileno())
                     path_stat = safe_path(task).stat()
-                    if (file_bytes != stat.st_size or final_stat.st_size != stat.st_size
-                            or final_stat.st_mtime_ns != stat.st_mtime_ns
-                            or (path_stat.st_dev, path_stat.st_ino) != (stat.st_dev, stat.st_ino)):
+                    if (
+                        file_bytes != stat.st_size
+                        or final_stat.st_size != stat.st_size
+                        or final_stat.st_mtime_ns != stat.st_mtime_ns
+                        or (path_stat.st_dev, path_stat.st_ino) != (stat.st_dev, stat.st_ino)
+                    ):
                         raise HTTPException(409, "素材文件在打包期间变化，请重试")
-                    files.append({"task_id": task["id"], "path": filename, "size_bytes": file_bytes,
-                                  "sha256": digest.hexdigest()})
+                    files.append(
+                        {
+                            "task_id": task["id"],
+                            "path": filename,
+                            "size_bytes": file_bytes,
+                            "sha256": digest.hexdigest(),
+                        }
+                    )
                 if copied_bytes != expected_bytes:
                     raise HTTPException(409, "素材文件在打包期间变化，请重试")
                 snapshot["files"] = files

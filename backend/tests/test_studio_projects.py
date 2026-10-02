@@ -16,8 +16,14 @@ def test_project_creation_persists_client_budget_and_deadline(client):
 
 
 def test_project_input_bounds_and_missing_project(client):
-    for values in ({"name": "  "}, {"budget_cents": -1}, {"budget_cents": 1_000_000_000_001},
-                   {"due_at": "2026-12-01T18:00:00"}, {"name": "a" * 121}, {"status": "delivered"}):
+    for values in (
+        {"name": "  "},
+        {"budget_cents": -1},
+        {"budget_cents": 1_000_000_000_001},
+        {"due_at": "2026-12-01T18:00:00"},
+        {"name": "a" * 121},
+        {"status": "delivered"},
+    ):
         assert client.post("/api/studio/projects", json={"name": "项目", **values}).status_code == 422
     assert client.get("/api/studio/projects/missing").status_code == 404
 

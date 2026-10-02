@@ -20,10 +20,13 @@ def summary() -> dict:
                 AND (r.license!='permission' OR trim(r.evidence_url)!='')),0) AS licensed_media
             FROM tasks t LEFT JOIN studio_rights r ON r.task_id=t.id WHERE t.status='completed'"""
         ).fetchone()
-        platforms = [{"name": row["name"], "count": row["count"]} for row in conn.execute(
-            """SELECT COALESCE(NULLIF(platform,''),'未知平台') AS name,COUNT(*) AS count
+        platforms = [
+            {"name": row["name"], "count": row["count"]}
+            for row in conn.execute(
+                """SELECT COALESCE(NULLIF(platform,''),'未知平台') AS name,COUNT(*) AS count
             FROM tasks WHERE status='completed' GROUP BY name ORDER BY count DESC,name LIMIT 20"""
-        )]
+            )
+        ]
         activity = []
         for row in conn.execute("SELECT * FROM studio_activity ORDER BY created_at DESC,id DESC LIMIT 30"):
             event = dict(row)

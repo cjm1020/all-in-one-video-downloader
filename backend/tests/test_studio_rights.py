@@ -16,14 +16,17 @@ def test_rights_default_unknown_and_explicit_review(client, task):
         assert conn.execute("SELECT COUNT(*) FROM studio_rights").fetchone()[0] == 0
 
 
-@pytest.mark.parametrize("data", [
-    {"license": "unknown", "verified": True},
-    {"license": "cc-by", "verified": True},
-    {"license": "permission", "verified": True},
-    {"license": "permission", "evidence_url": "https://localhost/proof"},
-    {"license": "owned", "evidence_url": "file:///secret.txt"},
-    {"license": "owned", "evidence_url": "https://user:password@example.com/proof"},
-])
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"license": "unknown", "verified": True},
+        {"license": "cc-by", "verified": True},
+        {"license": "permission", "verified": True},
+        {"license": "permission", "evidence_url": "https://localhost/proof"},
+        {"license": "owned", "evidence_url": "file:///secret.txt"},
+        {"license": "owned", "evidence_url": "https://user:password@example.com/proof"},
+    ],
+)
 def test_rights_reject_incomplete_or_unsafe_evidence(client, task, data):
     endpoint = f"/api/studio/rights/{task['id']}"
     assert client.put(endpoint, json=data).status_code == 422

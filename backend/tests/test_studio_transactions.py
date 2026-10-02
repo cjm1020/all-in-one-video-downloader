@@ -40,9 +40,13 @@ def test_workflow_rolls_back_tasks_membership_and_audit_together(client, monkeyp
 def test_project_limit_failure_rolls_back_whole_workflow_batch(client, monkeypatch):
     project = client.post("/api/studio/projects", json={"name": "容量测试"}).json()
     monkeypatch.setattr(workflows, "MAX_PROJECT_ITEMS", 1)
-    response = client.post("/api/studio/workflows/creator-research/run", json={
-        "urls": ["https://example.com/first", "https://example.com/second"], "project_id": project["id"],
-    })
+    response = client.post(
+        "/api/studio/workflows/creator-research/run",
+        json={
+            "urls": ["https://example.com/first", "https://example.com/second"],
+            "project_id": project["id"],
+        },
+    )
     assert response.status_code == 413
     assert db.list_tasks() == [] and storage.project_detail(project["id"])["items"] == []
 

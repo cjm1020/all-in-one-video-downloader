@@ -8,14 +8,38 @@ from .models import MAX_PROJECT_ITEMS
 from .storage import record, require_project
 
 BUILTINS = (
-    {"id": "creator-research", "name": "创作者灵感采集", "description": "收集参考视频，统一标记灵感素材，供脚本研究使用。",
-     "preset": "everyday", "tags": ["灵感", "参考"], "rate_limit": 0},
-    {"id": "client-archive", "name": "客户高清素材归档", "description": "使用归档质量保存授权素材，准备项目交付。",
-     "preset": "archive", "tags": ["客户素材", "待审核"], "rate_limit": 0},
-    {"id": "podcast-research", "name": "播客音频研究", "description": "保存音频参考，结合字幕导入和研究笔记准备选题。",
-     "preset": "audio", "tags": ["播客", "研究"], "rate_limit": 0},
-    {"id": "team-learning", "name": "团队轻量学习", "description": "使用节省空间的预设整理内部学习材料，限制下载速率。",
-     "preset": "commute", "tags": ["团队学习"], "rate_limit": 2048},
+    {
+        "id": "creator-research",
+        "name": "创作者灵感采集",
+        "description": "收集参考视频，统一标记灵感素材，供脚本研究使用。",
+        "preset": "everyday",
+        "tags": ["灵感", "参考"],
+        "rate_limit": 0,
+    },
+    {
+        "id": "client-archive",
+        "name": "客户高清素材归档",
+        "description": "使用归档质量保存授权素材，准备项目交付。",
+        "preset": "archive",
+        "tags": ["客户素材", "待审核"],
+        "rate_limit": 0,
+    },
+    {
+        "id": "podcast-research",
+        "name": "播客音频研究",
+        "description": "保存音频参考，结合字幕导入和研究笔记准备选题。",
+        "preset": "audio",
+        "tags": ["播客", "研究"],
+        "rate_limit": 0,
+    },
+    {
+        "id": "team-learning",
+        "name": "团队轻量学习",
+        "description": "使用节省空间的预设整理内部学习材料，限制下载速率。",
+        "preset": "commute",
+        "tags": ["团队学习"],
+        "rate_limit": 2048,
+    },
 )
 
 
@@ -52,8 +76,17 @@ def create_workflow(data) -> dict:
             raise HTTPException(404, "工作流目标合集不存在")
         conn.execute(
             "INSERT INTO studio_workflows VALUES (?,?,?,?,?,?,?,?,?)",
-            (workflow_id, data.name, data.description, data.preset, data.collection_id,
-             json.dumps(data.tags, ensure_ascii=False), data.rate_limit, timestamp, timestamp),
+            (
+                workflow_id,
+                data.name,
+                data.description,
+                data.preset,
+                data.collection_id,
+                json.dumps(data.tags, ensure_ascii=False),
+                data.rate_limit,
+                timestamp,
+                timestamp,
+            ),
         )
         record(conn, "workflow.created", workflow_id, {"name": data.name})
         return get_workflow(conn, workflow_id)
@@ -84,7 +117,8 @@ def run_workflow(workflow_id: str, urls: list[str], project_id: str | None) -> d
         for url in urls:
             if conn.execute(
                 """SELECT id FROM tasks WHERE url=? AND preset=? AND clip_start IS NULL AND clip_end IS NULL
-                AND status NOT IN ('failed','cancelled') LIMIT 1""", (url, workflow["preset"]),
+                AND status NOT IN ('failed','cancelled') LIMIT 1""",
+                (url, workflow["preset"]),
             ).fetchone():
                 skipped.append(url)
                 continue
@@ -94,14 +128,23 @@ def run_workflow(workflow_id: str, urls: list[str], project_id: str | None) -> d
             conn.execute(
                 """INSERT INTO tasks
                 (id,url,preset,collection_id,tags,rate_limit,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)""",
-                (task_id, url, workflow["preset"], workflow["collection_id"],
-                 json.dumps(workflow["tags"], ensure_ascii=False), workflow["rate_limit"], timestamp, timestamp),
+                (
+                    task_id,
+                    url,
+                    workflow["preset"],
+                    workflow["collection_id"],
+                    json.dumps(workflow["tags"], ensure_ascii=False),
+                    workflow["rate_limit"],
+                    timestamp,
+                    timestamp,
+                ),
             )
             if project_id is not None:
                 conn.execute("INSERT INTO studio_project_items VALUES (?,?)", (project_id, task_id))
             added.append(db.serialize(conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()))
         if project_id is not None and added:
             conn.execute("UPDATE studio_projects SET updated_at=? WHERE id=?", (db.now(), project_id))
-        record(conn, "workflow.run", workflow_id,
-               {"added": len(added), "skipped": len(skipped), "project_id": project_id})
+        record(
+            conn, "workflow.run", workflow_id, {"added": len(added), "skipped": len(skipped), "project_id": project_id}
+        )
     return {"added": added, "skipped": skipped}

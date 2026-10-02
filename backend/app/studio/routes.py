@@ -82,8 +82,11 @@ def run_workflow(workflow_id: str, data: WorkflowRun):
 @router.get("/projects/{project_id}/export")
 def export_project(project_id: str, format: str = "json"):
     body, media_type, suffix = exports.export_project(project_id, format)
-    return Response(body, media_type=media_type,
-                    headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.{suffix}"'})
+    return Response(
+        body,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.{suffix}"'},
+    )
 
 
 @router.get("/projects/{project_id}/package")
@@ -111,5 +114,9 @@ def delivery_package(project_id: str):
         finally:
             cleanup()
 
-    return StreamingResponse(stream(), media_type="application/zip", background=BackgroundTask(cleanup),
-                             headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.zip"'})
+    return StreamingResponse(
+        stream(),
+        media_type="application/zip",
+        background=BackgroundTask(cleanup),
+        headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.zip"'},
+    )
