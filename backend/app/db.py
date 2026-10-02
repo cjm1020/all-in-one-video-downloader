@@ -62,6 +62,9 @@ def initialize():
             "storage_limit_gb": config.max_storage_gb,
         }.items():
             conn.execute("INSERT OR IGNORE INTO settings VALUES (?, ?)", (key, json.dumps(value)))
+        from . import studio
+
+        studio.initialize(conn)
 
 
 def serialize(row) -> dict:
