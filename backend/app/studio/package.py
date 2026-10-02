@@ -46,7 +46,7 @@ def build_package(project_id: str):
     spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b")
     try:
         with db.connection() as conn, ExitStack() as opened:
-            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("BEGIN")
             snapshot = project_snapshot(conn, project_id)
             if not snapshot["checklist"]["ready"]:
                 raise HTTPException(409, "请先完成全部素材下载和授权审核，再生成交付包")
@@ -68,6 +68,9 @@ def build_package(project_id: str):
                 if expected_bytes > MAX_PACKAGE_BYTES:
                     raise HTTPException(413, "交付包素材总量不能超过 512 MiB，请拆分项目")
                 sources.append((source, archive_filename(index, task, path), task, path, stat))
+            # File handles keep the sources stable; release the database read
+            # snapshot while copying so workers can publish download progress.
+            conn.commit()
             documents = {"manifest.json": json_manifest(snapshot), "README.md": markdown_manifest(snapshot),
                          "rights.csv": csv_manifest(snapshot)}
             if expected_bytes + sum(len(value) for value in documents.values()) > MAX_PACKAGE_BYTES:
@@ -102,6 +105,12 @@ def build_package(project_id: str):
                     raise HTTPException(413, "素材与资料总量超过交付包限制，请拆分项目")
                 for filename, body in documents.items():
                     archive.writestr(filename, body)
+            conn.execute("BEGIN IMMEDIATE")
+            current = project_snapshot(conn, project_id)
+            if not current["checklist"]["ready"] or current != {
+                key: value for key, value in snapshot.items() if key != "files"
+            }:
+                raise HTTPException(409, "项目或素材授权在打包期间发生变化，请刷新后重试")
             record(conn, "project.packaged", project_id, {"items": len(sources), "media_bytes": copied_bytes})
         spool.seek(0)
         return spool

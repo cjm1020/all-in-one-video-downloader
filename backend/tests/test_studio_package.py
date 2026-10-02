@@ -89,3 +89,28 @@ def test_archive_rejects_media_that_changes_during_copy(client, task, monkeypatc
     assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 409
     with db.connection() as conn:
         assert conn.execute("SELECT COUNT(*) FROM studio_activity WHERE action='project.packaged'").fetchone()[0] == 0
+
+
+def test_rights_revocation_during_copy_is_not_blocked_and_prevents_delivery(client, task, monkeypatch):
+    from app.studio import storage
+    from app.studio.models import RightsPatch
+
+    project_id = package_project(client, task)
+    original_digest = package.hashlib.sha256
+
+    class RevokingDigest:
+        def __init__(self):
+            self.digest = original_digest()
+
+        def update(self, chunk):
+            storage.set_rights(task["id"], RightsPatch(license="unknown"))
+            self.digest.update(chunk)
+
+        def hexdigest(self):
+            return self.digest.hexdigest()
+
+    monkeypatch.setattr(package.hashlib, "sha256", RevokingDigest)
+    assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 409
+    assert client.get(f"/api/studio/rights/{task['id']}").json()["license"] == "unknown"
+    with db.connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM studio_activity WHERE action='project.packaged'").fetchone()[0] == 0
