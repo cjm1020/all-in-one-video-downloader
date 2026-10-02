@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import EmptyState from '../components/EmptyState.vue'
 import Icon from '../components/Icon.vue'
+import KnowledgeSearch from '../components/KnowledgeSearch.vue'
 import { api, duration, message, navigate, notify, refresh, store } from '../store'
 import type { TaskDetail } from '../types'
 
@@ -17,6 +18,11 @@ const filter = ref(''),
 const filtered = computed(() =>
   available.value.filter((t) => t.title.toLowerCase().includes(filter.value.toLowerCase())),
 )
+const selectedPosition = ref<number | null>(null)
+async function selectResult(id: string, position: number | null) {
+  selectedPosition.value = position
+  await select(id)
+}
 async function select(id: string) {
   selected.value = id
   store.selectedLearning = id
@@ -98,6 +104,7 @@ onMounted(() => {
       学习花园
     </span>
   </div>
+  <KnowledgeSearch @select="selectResult" />
   <div class="learning-banner">
     <span class="feature-icon lavender"><Icon name="sparkles" :size="23" /></span>
     <div>
