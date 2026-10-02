@@ -1,0 +1,13 @@
+{
+  "name": "all-in-one-video-downloader",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {"vue": "^3.5.22", "lucide-vue-next": "^0.468.0"},
+  "devDependencies": {"@vitejs/plugin-vue": "^6.0.1", "vite": "^7.1.7", "typescript": "~5.9.3", "vue-tsc": "^3.1.0"}
+}
