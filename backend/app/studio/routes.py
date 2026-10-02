@@ -4,7 +4,7 @@ from starlette.background import BackgroundTask
 
 from .. import db
 from ..security import validate_public_url
-from . import exports, package, storage, workflows
+from . import analytics, exports, package, storage, workflows
 from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch, WorkflowCreate, WorkflowRun
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
@@ -13,6 +13,11 @@ router = APIRouter(prefix="/api/studio", tags=["studio"])
 @router.get("/projects")
 def projects():
     return storage.list_projects()
+
+
+@router.get("/analytics")
+def analytics_summary():
+    return analytics.summary()
 
 
 @router.post("/projects", status_code=201)
