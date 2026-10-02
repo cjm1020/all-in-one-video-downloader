@@ -18,6 +18,7 @@ const markers = ref<Marker[]>([]),
   busy = ref(false),
   error = ref('')
 const form = reactive({ position: 0, label: '', notes: '', color: 'sage' })
+const pendingPosition = ref(props.position)
 function time(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
 }
@@ -31,7 +32,8 @@ async function load() {
   }
 }
 function seek(position: number) {
-  if (player.value) player.value.currentTime = position
+  pendingPosition.value = position
+  if (player.value && player.value.readyState >= 1) player.value.currentTime = position
   form.position = position
 }
 async function openMarker(position: number) {
@@ -70,7 +72,7 @@ async function remove(marker: Marker) {
   }
 }
 function metadata() {
-  if (props.position !== null) seek(props.position)
+  if (pendingPosition.value !== null) seek(pendingPosition.value)
 }
 watch(
   () => props.task.id,
