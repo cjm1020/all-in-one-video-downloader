@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
 from .. import db
+from ..security import validate_public_url
 from . import storage, workflows
-from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch, WorkflowCreate
+from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch, WorkflowCreate, WorkflowRun
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
 
@@ -63,3 +64,9 @@ def create_workflow(data: WorkflowCreate):
 def delete_workflow(workflow_id: str):
     workflows.delete_workflow(workflow_id)
     return {"ok": True}
+
+
+@router.post("/workflows/{workflow_id}/run")
+def run_workflow(workflow_id: str, data: WorkflowRun):
+    urls = [validate_public_url(url) for url in data.urls]
+    return workflows.run_workflow(workflow_id, urls, data.project_id)

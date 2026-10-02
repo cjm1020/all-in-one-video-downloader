@@ -106,3 +106,15 @@ class WorkflowCreate(StudioModel):
         if any(len(value) > 200 for value in values):
             raise ValueError("标签内容过长")
         return list(dict.fromkeys(value.strip()[:30] for value in values if value.strip()))
+
+
+class WorkflowRun(StudioModel):
+    urls: list[str] = Field(min_length=1, max_length=100)
+    project_id: str | None = Field(None, max_length=80)
+
+    @field_validator("urls")
+    @classmethod
+    def bound_urls(cls, values: list[str]) -> list[str]:
+        if any(len(url) > 2048 for url in values):
+            raise ValueError("链接不能超过 2048 字符")
+        return values

@@ -4,7 +4,7 @@ import uuid
 from fastapi import HTTPException
 
 from .. import db
-from .storage import record
+from .storage import record, require_project
 
 BUILTINS = (
     {"id": "creator-research", "name": "创作者灵感采集", "description": "收集参考视频，统一标记灵感素材，供脚本研究使用。",
@@ -66,3 +66,36 @@ def delete_workflow(workflow_id: str):
             raise HTTPException(409, "内置工作流不能删除")
         conn.execute("DELETE FROM studio_workflows WHERE id=?", (workflow_id,))
         record(conn, "workflow.deleted", workflow_id)
+
+
+def run_workflow(workflow_id: str, urls: list[str], project_id: str | None) -> dict:
+    added, skipped = [], []
+    with db.connection() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        workflow = get_workflow(conn, workflow_id)
+        if project_id is not None:
+            project = require_project(conn, project_id)
+            if project["status"] == "delivered":
+                raise HTTPException(409, "请重新打开项目后再运行工作流")
+        for url in urls:
+            if conn.execute(
+                """SELECT id FROM tasks WHERE url=? AND preset=? AND clip_start IS NULL AND clip_end IS NULL
+                AND status NOT IN ('failed','cancelled') LIMIT 1""", (url, workflow["preset"]),
+            ).fetchone():
+                skipped.append(url)
+                continue
+            task_id, timestamp = str(uuid.uuid4()), db.now()
+            conn.execute(
+                """INSERT INTO tasks
+                (id,url,preset,collection_id,tags,rate_limit,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)""",
+                (task_id, url, workflow["preset"], workflow["collection_id"],
+                 json.dumps(workflow["tags"], ensure_ascii=False), workflow["rate_limit"], timestamp, timestamp),
+            )
+            if project_id is not None:
+                conn.execute("INSERT INTO studio_project_items VALUES (?,?)", (project_id, task_id))
+            added.append(db.serialize(conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()))
+        if project_id is not None and added:
+            conn.execute("UPDATE studio_projects SET updated_at=? WHERE id=?", (db.now(), project_id))
+        record(conn, "workflow.run", workflow_id,
+               {"added": len(added), "skipped": len(skipped), "project_id": project_id})
+    return {"added": added, "skipped": skipped}
