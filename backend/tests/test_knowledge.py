@@ -156,3 +156,14 @@ def test_migration_is_idempotent_and_delete_cascades_cards(client, task):
     assert len(client.get(path).json()) == 1
     client.delete(f"/api/tasks/{task['id']}")
     assert client.get("/api/knowledge/cards/due").json() == []
+
+
+def test_upgrade_corrects_legacy_source_duration_on_completed_clips(client):
+    clip = client.post("/api/tasks", json={
+        "urls": ["https://example.com/legacy-clip.mp4"], "clip_start": 1, "clip_end": 3,
+    }).json()["added"][0]
+    db.update_task(clip["id"], {"status": "completed", "duration": 5.088})
+    db.initialize()
+    assert db.get_task(clip["id"])["duration"] == 2
+    db.initialize()
+    assert db.get_task(clip["id"])["duration"] == 2

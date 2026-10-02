@@ -67,6 +67,11 @@ def initialize():
 
         studio.initialize(conn)
         knowledge_db.initialize(conn)
+        # Version 1.0 saved the whole source duration for completed clips.
+        # Correct that metadata on upgrade without touching the existing media.
+        conn.execute("""UPDATE tasks SET duration=clip_end-clip_start
+            WHERE status='completed' AND clip_start IS NOT NULL AND clip_end>clip_start
+            AND ABS(duration-(clip_end-clip_start))>0.1""")
 
 
 def serialize(row) -> dict:
