@@ -37,19 +37,51 @@ def create_project(data) -> dict:
 
 def list_projects() -> list[dict]:
     with db.connection() as conn:
-        return [dict(row) for row in conn.execute("SELECT * FROM studio_projects ORDER BY created_at DESC, id")]
+        conn.execute("BEGIN")
+        result = []
+        for row in conn.execute("SELECT * FROM studio_projects ORDER BY created_at DESC, id"):
+            project = dict(row)
+            checks = checklist(project_items(conn, project["id"]))
+            project.update(item_count=checks["total"], completed_count=checks["completed"],
+                           licensed_count=checks["licensed"], ready=checks["ready"])
+            result.append(project)
+        return result
 
 
 def project_detail(project_id: str) -> dict:
     with db.connection() as conn:
-        project = require_project(conn, project_id)
-        items = project_items(conn, project_id)
-        issues = [{"task_id": item["id"], "reason": "请审核素材授权"} for item in items]
-        if not items:
-            issues.append({"task_id": None, "reason": "请先添加项目素材"})
-        return {"project": project, "items": items, "checklist": {"total": len(items),
-                "completed": sum(item["status"] == "completed" for item in items), "licensed": 0,
-                "ready": False, "issues": issues}}
+        conn.execute("BEGIN")
+        return project_snapshot(conn, project_id)
+
+
+def rights_valid(rights: dict) -> bool:
+    return bool(rights["verified"] and rights["license"] != "unknown"
+                and (rights["license"] != "cc-by" or rights["attribution"].strip())
+                and (rights["license"] != "permission" or rights["evidence_url"].strip()))
+
+
+def checklist(items: list[dict]) -> dict:
+    issues = []
+    completed, licensed = 0, 0
+    for item in items:
+        if item["status"] == "completed":
+            completed += 1
+        else:
+            issues.append({"task_id": item["id"], "reason": "素材下载尚未完成"})
+        if rights_valid(item["rights"]):
+            licensed += 1
+        else:
+            issues.append({"task_id": item["id"], "reason": "素材授权尚未审核或凭证不完整"})
+    if not items:
+        issues.append({"task_id": None, "reason": "请先添加项目素材"})
+    return {"total": len(items), "completed": completed, "licensed": licensed,
+            "ready": bool(items) and not issues, "issues": issues}
+
+
+def project_snapshot(conn, project_id: str) -> dict:
+    project = require_project(conn, project_id)
+    items = project_items(conn, project_id)
+    return {"project": project, "items": items, "checklist": checklist(items)}
 
 
 def project_items(conn, project_id: str) -> list[dict]:
@@ -123,18 +155,23 @@ def patch_project(project_id: str, data) -> dict:
         raise ValueError("项目字段不能为空")
     if values.get("name") == "":
         raise ValueError("项目名称不能为空")
-    if values.get("status") == "delivered":
-        raise HTTPException(409, "请先完成素材下载和授权审核")
     if values.get("due_at") is not None:
         values["due_at"] = values["due_at"].isoformat()
     with db.connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        require_project(conn, project_id)
+        project = require_project(conn, project_id)
+        if values.get("status") == "delivered" and not project_snapshot(conn, project_id)["checklist"]["ready"]:
+            raise HTTPException(409, "请先完成素材下载和授权审核")
         if values:
             values["updated_at"] = db.now()
             assignments = ",".join(f"{key}=?" for key in values)
             conn.execute(f"UPDATE studio_projects SET {assignments} WHERE id=?", (*values.values(), project_id))
-            record(conn, "project.updated", project_id, {"fields": list(values)})
+            action = "project.updated"
+            if values.get("status") == "delivered" and project["status"] != "delivered":
+                action = "project.delivered"
+            elif project["status"] == "delivered" and values.get("status") in {"active", "draft"}:
+                action = "project.reopened"
+            record(conn, action, project_id, {"fields": list(values)})
         return require_project(conn, project_id)
 
 
