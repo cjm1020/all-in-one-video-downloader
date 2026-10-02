@@ -34,6 +34,11 @@ function seek(position: number) {
   if (player.value) player.value.currentTime = position
   form.position = position
 }
+async function openMarker(position: number) {
+  open.value = true
+  await nextTick()
+  seek(position)
+}
 function fromPlayer() {
   form.position = Math.round(player.value?.currentTime || 0)
 }
@@ -139,10 +144,7 @@ onMounted(() => {
       <article v-for="marker in markers" :key="marker.id" :class="['marker', marker.color]">
         <button
           class="marker-seek"
-          @click="
-            open = true
-            nextTick(() => seek(marker.position))
-          "
+          @click="openMarker(marker.position)"
         >
           <strong>{{ time(marker.position) }} · {{ marker.label }}</strong>
           <span v-if="marker.notes">{{ marker.notes }}</span>

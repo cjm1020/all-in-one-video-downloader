@@ -25,6 +25,10 @@ const form = reactive({
   rate_limit: 0,
 })
 const availableProjects = computed(() => props.projects.filter((p) => p.status !== 'delivered'))
+function newRecipe() {
+  creating.value = true
+  error.value = ''
+}
 async function load() {
   try {
     workflows.value = await api<Workflow[]>('/studio/workflows')
@@ -117,10 +121,7 @@ onMounted(load)
       </h2>
       <button
         class="button small"
-        @click="
-          creating = true
-          error = ''
-        "
+        @click="newRecipe"
       >
         <Icon name="plus" :size="13" />
         自定义配方

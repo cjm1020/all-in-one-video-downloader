@@ -70,6 +70,10 @@ function create() {
   editing.value = undefined
   formOpen.value = true
 }
+function editProject(project: Project) {
+  editing.value = project
+  formOpen.value = true
+}
 async function saved(project: Project) {
   formOpen.value = false
   selected.value = project.id
@@ -184,10 +188,7 @@ onUnmounted(() => clearTimeout(refreshTimer))
           </div>
           <button
             class="button small"
-            @click="
-              editing = detail.project
-              formOpen = true
-            "
+            @click="editProject(detail.project)"
           >
             <Icon name="sliders" :size="14" />
             编辑资料

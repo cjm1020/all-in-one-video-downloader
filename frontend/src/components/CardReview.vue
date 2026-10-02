@@ -21,6 +21,10 @@ const cards = ref<DueCard[]>([]),
   error = ref(''),
   reviewed = ref(0)
 const current = computed(() => cards.value[0])
+function toggleReview() {
+  open.value = !open.value
+  if (open.value) load()
+}
 async function load() {
   error.value = ''
   try {
@@ -71,10 +75,7 @@ onMounted(load)
       </div>
       <button
         class="button small"
-        @click="
-          open = !open
-          if (open) load()
-        "
+        @click="toggleReview"
       >
         {{ open ? '收起复习' : cards.length ? '开始复习' : '检查复习' }}
       </button>

@@ -17,6 +17,10 @@ const query = ref(''),
   busy = ref(false),
   error = ref('')
 let generation = 0
+function hideResults() {
+  searched.value = false
+  results.value = []
+}
 async function search() {
   const id = ++generation
   busy.value = true
@@ -68,10 +72,7 @@ async function search() {
         </span>
         <button
           class="text-link"
-          @click="
-            searched = false
-            results = []
-          "
+          @click="hideResults"
         >
           收起结果
         </button>
