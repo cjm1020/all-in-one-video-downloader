@@ -6,6 +6,7 @@ import ProjectForm from '../components/ProjectForm.vue'
 import ProjectItems from '../components/ProjectItems.vue'
 import RightsEditor from '../components/RightsEditor.vue'
 import DeliveryChecklist from '../components/DeliveryChecklist.vue'
+import DeliveryExports from '../components/DeliveryExports.vue'
 import { api, bytes, message, notify, statusLabels, store } from '../store'
 import { currency, localDate, projectStatus } from '../studio'
 import type { Project, ProjectDetail, ProjectItem } from '../studio'
@@ -89,6 +90,7 @@ onUnmounted(() => clearTimeout(refreshTimer))
         <div class="panel-heading media-heading"><h2>项目素材 <span class="section-caption">{{ detail.items.length }}</span></h2><button class="button small" :disabled="detail.project.status === 'delivered'" @click="itemsOpen = true"><Icon name="plus" :size="14" />管理素材</button></div>
         <EmptyState v-if="!detail.items.length" icon="library" title="把第一份素材放进项目" description="已完成和排队中的素材都可以加入。下载与授权检查会随项目更新。" />
         <article v-for="item in detail.items" :key="item.id" class="project-media"><span class="feature-icon" :class="item.rights.verified && item.rights.license !== 'unknown' ? 'sage' : 'peach'"><Icon :name="item.rights.verified && item.rights.license !== 'unknown' ? 'shield' : 'video'" :size="18" /></span><div><strong>{{ item.title || item.url }}</strong><small>{{ item.platform || '待解析' }} · {{ bytes(item.file_size) }} · {{ statusLabels[item.status] }}</small><span class="rights-hint">{{ item.rights.license === 'unknown' ? '授权待确认' : item.rights.verified ? '授权已核验' : '授权待核验' }}</span></div><button class="button small" @click="rights = item">授权记录</button></article>
+        <DeliveryExports :detail="detail" />
         <div class="project-remove"><button class="text-link" @click="confirmingDelete = !confirmingDelete"><Icon name="trash" :size="13" />移除项目</button><div v-if="confirmingDelete" class="remove-confirm"><p>移除「{{ detail.project.name }}」的项目记录与关联？媒体文件仍保留。</p><button class="button small" :disabled="busy" @click="confirmingDelete = false">取消</button><button class="button small danger" :disabled="busy" @click="remove">确认移除</button></div></div>
       </template>
     </section>
