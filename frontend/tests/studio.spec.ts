@@ -43,7 +43,7 @@ test('project workflow preserves readiness guards and rights evidence through th
     expect(detail.checklist.licensed).toBe(1)
     expect(detail.checklist.ready).toBe(false)
     await expect(page.getByRole('button', { name: '标记已交付' })).toBeDisabled()
-    await expect(page.getByRole('link', { name: '下载交付 ZIP' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '下载交付 ZIP' })).toBeDisabled()
     expect((await request.get(`/api/studio/projects/${projectId}/export?format=json`)).status()).toBe(200)
     expect(errors).toEqual([])
   } finally {
@@ -87,7 +87,7 @@ test('subtitle search, markers and source-backed reviews form a complete learnin
     await review.getByRole('button', { name: '想好以后，查看答案' }).click()
     await expect(review).toContainText('原句：')
     await review.getByRole('button', { name: '基本记住' }).click()
-    await expect(page.getByText('本轮复习完成')).toBeVisible()
+    await expect(page.getByText('复习已完成。新建复习卡后，可以回到这里开始。')).toBeVisible()
     const cards = await (await request.get(`/api/knowledge/tasks/${task.id}/cards`)).json()
     expect(cards[0].interval_days).toBe(1)
   } finally {
@@ -116,4 +116,42 @@ test('commercial views and ROI calculations fit a narrow viewport', async ({ pag
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${route} fits mobile`).toBe(true)
   }
   expect(errors).toEqual([])
+})
+
+test('a custom workflow runs from the UI and skips an existing scheduled source', async ({ page, request }) => {
+  const source = `https://example.com/recipe-browser-${Date.now()}.mp4`
+  const name = `研究配方 ${Date.now()}`
+  const created = await request.post('/api/tasks', {
+    data: { urls: [source], scheduled_at: new Date(Date.now() + 86400000).toISOString() },
+  })
+  const task = (await created.json()).added[0]
+  let workflowId = ''
+  try {
+    await page.goto('/#studio')
+    await page.getByRole('button', { name: '自定义配方' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('配方名称').fill(name)
+    await dialog.getByLabel('用途说明').fill('模拟工作流验收，不执行实际网络下载。')
+    await dialog.getByLabel('标签（用逗号分隔）').fill('客户素材, 研究')
+    await dialog.getByRole('button', { name: '保存配方' }).click()
+    await expect(dialog).not.toBeVisible()
+    const recipe = page.locator('.recipe-card').filter({ hasText: name })
+    await expect(recipe).toBeVisible()
+    const workflows = await (await request.get('/api/studio/workflows')).json()
+    workflowId = workflows.find((w: { name: string }) => w.name === name).id
+    await recipe.getByRole('button', { name: '使用配方' }).click()
+    await dialog.getByLabel('视频链接（每行一个）').fill(source)
+    await dialog.getByRole('button', { name: '运行配方' }).click()
+    await expect(dialog.getByRole('status')).toContainText('已加入 0 个下载任务，跳过 1 个重复链接')
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click()
+    await page.goto('/#insights')
+    await expect(page.getByText('运行工作流', { exact: true }).first()).toBeVisible()
+  } finally {
+    if (!workflowId) {
+      const workflows = await (await request.get('/api/studio/workflows')).json()
+      workflowId = workflows.find((w: { name: string }) => w.name === name)?.id || ''
+    }
+    if (workflowId) await request.delete(`/api/studio/workflows/${workflowId}`)
+    await request.delete(`/api/tasks/${task.id}`)
+  }
 })
