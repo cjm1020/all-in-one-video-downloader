@@ -1,11 +1,14 @@
 """Local knowledge APIs for finding evidence and building review habits."""
 
+import json
 import uuid
 import sqlite3
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 
 from . import db
+from .briefs import editorial_brief, markdown_brief
 from .knowledge_db import source_hash
 from .knowledge_models import CardCreate, MarkerCreate, ReviewInput
 from .library import require_task
@@ -170,3 +173,17 @@ def delete_card(card_id: str):
         if not conn.execute("DELETE FROM study_cards WHERE id=?", (card_id,)).rowcount:
             raise HTTPException(404, "复习卡不存在")
     return {"ok": True}
+
+
+@router.get("/tasks/{task_id}/brief")
+def export_brief(task_id: str, format: str = "markdown"):
+    brief = editorial_brief(require_task(task_id), markers(task_id))
+    if format == "json":
+        body, media_type, suffix = json.dumps(brief, ensure_ascii=False, indent=2), "application/json", "json"
+    elif format == "markdown":
+        body, media_type, suffix = markdown_brief(brief), "text/markdown", "md"
+    else:
+        raise HTTPException(400, "不支持的简报导出格式")
+    return Response(body, media_type=media_type, headers={
+        "Content-Disposition": f'attachment; filename="brief-{task_id[:8]}.{suffix}"',
+    })
