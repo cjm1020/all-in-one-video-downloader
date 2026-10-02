@@ -80,7 +80,14 @@ def get_task(task_id: str, raw: bool = False) -> dict | None:
 
 def list_tasks() -> list[dict]:
     with connection() as conn:
-        return [serialize(r) for r in conn.execute("SELECT * FROM tasks ORDER BY created_at DESC")]
+        result = []
+        for row in conn.execute("SELECT * FROM tasks ORDER BY created_at DESC"):
+            value = serialize(row)
+            value["has_transcript"] = bool(value.pop("transcript"))
+            value["has_summary"] = bool(value.pop("summary"))
+            value.pop("notes")
+            result.append(value)
+        return result
 
 
 def update_task(task_id: str, values: dict, only_status: tuple | None = None) -> bool:
