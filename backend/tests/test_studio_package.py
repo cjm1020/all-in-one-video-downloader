@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import zipfile
@@ -30,6 +31,8 @@ def test_delivery_zip_contains_manifest_rights_and_actual_safe_media(client, tas
         assert archive.read(media) == b"licensed media"
         manifest = json.loads(archive.read("manifest.json"))
         assert manifest["checklist"]["ready"]
+        assert manifest["files"] == [{"task_id": task["id"], "path": media, "size_bytes": len(b"licensed media"),
+                                      "sha256": hashlib.sha256(b"licensed media").hexdigest()}]
         assert "file_path" not in archive.read("manifest.json").decode()
     # Slots and temporary files are released when the response finishes.
     assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 200
@@ -65,3 +68,24 @@ def test_archive_capacity_and_missing_project_release_slot(client):
     finally:
         package.package_slots.release()
         package.package_slots.release()
+
+
+def test_archive_rejects_media_that_changes_during_copy(client, task, monkeypatch):
+    project_id = package_project(client, task)
+    original = package.os.fstat
+    calls = 0
+
+    def changed_stat(fd):
+        nonlocal calls
+        stat = original(fd)
+        calls += 1
+        if calls == 2:
+            from types import SimpleNamespace
+
+            return SimpleNamespace(st_size=stat.st_size, st_mtime_ns=stat.st_mtime_ns + 1)
+        return stat
+
+    monkeypatch.setattr(package.os, "fstat", changed_stat)
+    assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 409
+    with db.connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM studio_activity WHERE action='project.packaged'").fetchone()[0] == 0

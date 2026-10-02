@@ -14,9 +14,12 @@ MAX_METADATA_BYTES = 8 * 1024 * 1024
 def manifest(snapshot: dict) -> dict:
     fields = ("id", "title", "url", "preset", "platform", "status", "duration", "file_size", "tags",
               "notes", "summary", "rights")
-    return {"schema_version": 1, "generated_at": db.now(), "project": snapshot["project"],
-            "checklist": snapshot["checklist"],
-            "items": [{key: item[key] for key in fields} for item in snapshot["items"]]}
+    result = {"schema_version": 1, "generated_at": db.now(), "project": snapshot["project"],
+              "checklist": snapshot["checklist"],
+              "items": [{key: item[key] for key in fields} for item in snapshot["items"]]}
+    if "files" in snapshot:
+        result["files"] = snapshot["files"]
+    return result
 
 
 def bounded_metadata(body: str) -> bytes:
