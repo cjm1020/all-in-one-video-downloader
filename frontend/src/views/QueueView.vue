@@ -2,38 +2,489 @@
 import { computed, ref } from 'vue'
 import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
-import { api, bytes, duration, message, navigate, notify, presets, refresh, statusLabels, store } from '../store'
+import {
+  api,
+  bytes,
+  duration,
+  hostname,
+  message,
+  navigate,
+  notify,
+  presets,
+  refresh,
+  statusLabels,
+  store,
+} from '../store'
 import type { Task } from '../types'
-const filter = ref('all'), query = ref(''), busy = ref(new Set<string>()), deleteId = ref('')
-const active = computed(() => store.tasks.filter(t => ['queued', 'downloading', 'processing'].includes(t.status)))
-const filtered = computed(() => store.tasks.filter(t => {
-  const inFilter = filter.value === 'all' || (filter.value === 'active' ? ['queued', 'downloading', 'processing'].includes(t.status) : t.status === filter.value)
-  return inFilter && `${t.title} ${t.url}`.toLowerCase().includes(query.value.toLowerCase())
-}))
+const filter = ref('all'),
+  query = ref(''),
+  busy = ref(new Set<string>()),
+  deleteId = ref('')
+const active = computed(() =>
+  store.tasks.filter((t) => ['queued', 'downloading', 'processing'].includes(t.status)),
+)
+const filtered = computed(() =>
+  store.tasks.filter((t) => {
+    const inFilter =
+      filter.value === 'all' ||
+      (filter.value === 'active'
+        ? ['queued', 'downloading', 'processing'].includes(t.status)
+        : t.status === filter.value)
+    return inFilter && `${t.title} ${t.url}`.toLowerCase().includes(query.value.toLowerCase())
+  }),
+)
 async function action(task: Task, operation: string) {
   busy.value.add(task.id)
-  try { await api(`/tasks/${task.id}/actions/${operation}`, { method: 'POST' }); await refresh(); notify({ pause: '已暂停，临时文件会保留', resume: '已加入队列，继续收藏', cancel: '已取消这个任务', retry: '已加入队列，准备重新下载' }[operation] || '操作完成') }
-  catch (e) { notify(message(e), true) }
-  finally { busy.value.delete(task.id) }
+  try {
+    await api(`/tasks/${task.id}/actions/${operation}`, { method: 'POST' })
+    await refresh()
+    notify(
+      {
+        pause: '已暂停，临时文件会保留',
+        resume: '已加入队列，继续收藏',
+        cancel: '已取消这个任务',
+        retry: '已加入队列，准备重新下载',
+      }[operation] || '操作完成',
+    )
+  } catch (e) {
+    notify(message(e), true)
+  } finally {
+    busy.value.delete(task.id)
+  }
 }
 async function remove(task: Task) {
   busy.value.add(task.id)
-  try { await api(`/tasks/${task.id}`, { method: 'DELETE' }); deleteId.value = ''; await refresh(); notify('任务及本地文件已删除') }
-  catch (e) { notify(message(e), true) }
-  finally { busy.value.delete(task.id) }
+  try {
+    await api(`/tasks/${task.id}`, { method: 'DELETE' })
+    deleteId.value = ''
+    await refresh()
+    notify('任务及本地文件已删除')
+  } catch (e) {
+    notify(message(e), true)
+  } finally {
+    busy.value.delete(task.id)
+  }
 }
 async function pauseAll() {
   for (const task of active.value) await action(task, 'pause')
 }
-function scheduled(task: Task) { return task.scheduled_at && new Date(task.scheduled_at).getTime() > Date.now() }
+function scheduled(task: Task) {
+  return task.scheduled_at && new Date(task.scheduled_at).getTime() > Date.now()
+}
 </script>
 <template>
-  <div class="page-heading"><div><div class="eyebrow">ON THE WAY</div><h1>精彩，正在慢慢抵达</h1><p>关掉页面也没关系，你的下载会在后台继续。</p></div><button class="button primary" @click="navigate('home')"><Icon name="plus" :size="16" />添加收藏</button></div>
-  <div class="queue-summary panel"><div><span class="feature-icon sage"><Icon name="download" /></span><span><strong>{{ active.length }} 个片刻正在路上</strong><small>{{ store.status?.worker_online ? '独立 Worker 按顺序处理任务，预约任务到期后开始' : 'Worker 尚未连接，请在偏好设置中查看服务状态' }}</small></span></div><div class="queue-live"><span class="online-dot" :class="{ offline: !store.connected }"></span>{{ store.connected ? '实时更新中' : '正在重新连接' }}<button v-if="active.length" class="button small" @click="pauseAll"><Icon name="pause" :size="14" />全部暂停</button></div></div>
-  <div class="filters"><button v-for="item in [{ id: 'all', name: '全部' }, { id: 'active', name: '进行中' }, { id: 'completed', name: '已完成' }, { id: 'paused', name: '已暂停' }, { id: 'failed', name: '需重试' }]" :key="item.id" class="chip" :class="{ active: filter === item.id }" @click="filter = item.id">{{ item.name }}</button><label class="search-field"><span class="sr-only">搜索下载任务</span><Icon name="search" :size="16" /><input v-model="query" placeholder="找一个片刻…" /></label></div>
-  <section class="panel queue-list"><EmptyState v-if="!filtered.length" icon="download" :title="store.tasks.length ? '没有找到这个片刻' : '队列里，还是一片安静'" :description="store.tasks.length ? '试试其他搜索词或筛选条件。' : '把喜欢的视频链接带过来，让我们帮你慢慢收藏。'"><button v-if="!store.tasks.length" class="button small" @click="navigate('home')"><Icon name="plus" :size="14" />添加第一个收藏</button></EmptyState><article v-for="task in filtered" :key="task.id" class="queue-item"><div class="queue-thumb"><img v-if="task.thumbnail" :src="task.thumbnail" alt="" referrerpolicy="no-referrer" /><Icon v-else :name="task.preset === 'audio' ? 'headphones' : 'video'" :size="25" /><span>{{ presets.find(p => p.id === task.preset)?.label }}</span></div><div class="queue-item-main"><div class="task-title-line"><h3>{{ task.title || new URL(task.url).hostname }}</h3><span :class="['status-pill', task.status]">{{ scheduled(task) && task.status === 'queued' ? '已预约' : statusLabels[task.status] }}</span></div><p class="task-meta">{{ task.platform || new URL(task.url).hostname }}<span>·</span>{{ presets.find(p => p.id === task.preset)?.title }}<span>·</span>{{ task.duration ? duration(task.duration) : '等待解析信息' }}<template v-if="task.clip_end !== null"><span>·</span>剪辑 {{ task.clip_start }}–{{ task.clip_end }} 秒</template></p><template v-if="['downloading', 'processing'].includes(task.status)"><div class="progress-track"><span :style="{ width: task.progress + '%' }"></span></div><div class="progress-info"><span>{{ task.status === 'processing' ? '正在合并或处理媒体…' : `${bytes(task.speed)}/s · 预计 ${Math.ceil(task.eta)} 秒` }}</span><strong>{{ Math.round(task.progress) }}%</strong></div></template><p v-else-if="scheduled(task) && task.status === 'queued'" class="schedule-note"><Icon name="clock" :size="12" />{{ new Date(task.scheduled_at!).toLocaleString('zh-CN') }} 开始</p><p v-else-if="task.status === 'failed'" class="error-text task-error">{{ task.error }}</p><p v-else class="task-meta task-secondary">{{ task.status === 'completed' ? `已保存 ${bytes(task.file_size)} · 可以在媒体收藏中播放` : task.status === 'paused' ? '已保存下载片段，继续时尝试续传' : task.status === 'cancelled' ? '已取消，可以重新加入队列' : '等待 Worker 领取任务' }}</p></div><div class="queue-actions"><template v-if="deleteId === task.id"><span class="delete-confirm">删除任务与文件？</span><button class="button small danger" :disabled="busy.has(task.id)" @click="remove(task)">删除</button><button class="icon-button" aria-label="保留任务" @click="deleteId = ''"><Icon name="x" :size="15" /></button></template><template v-else><button v-if="['queued', 'downloading', 'processing'].includes(task.status)" class="icon-button" :disabled="busy.has(task.id)" aria-label="暂停任务" title="暂停" @click="action(task, 'pause')"><Icon name="pause" :size="17" /></button><button v-if="task.status === 'paused'" class="icon-button" :disabled="busy.has(task.id)" aria-label="继续任务" title="继续" @click="action(task, 'resume')"><Icon name="play" :size="17" /></button><button v-if="['failed', 'cancelled'].includes(task.status)" class="icon-button" :disabled="busy.has(task.id)" aria-label="重试任务" title="重试" @click="action(task, 'retry')"><Icon name="retry" :size="17" /></button><a v-if="task.status === 'completed'" class="icon-button" :href="`/api/tasks/${task.id}/file?download=true`" aria-label="保存文件" title="保存文件"><Icon name="save" :size="17" /></a><button v-if="['queued', 'downloading', 'processing', 'paused'].includes(task.status)" class="icon-button danger" :disabled="busy.has(task.id)" aria-label="取消任务" title="取消" @click="action(task, 'cancel')"><Icon name="x" :size="17" /></button><button v-else class="icon-button danger" :disabled="busy.has(task.id)" aria-label="删除任务" title="删除任务及文件" @click="deleteId = task.id"><Icon name="trash" :size="17" /></button></template></div></article></section><p class="queue-footnote"><Icon name="help" :size="13" />平台要求登录、地区限制或来源变化可能导致失败，具体原因会显示在任务中。</p>
+  <div class="page-heading">
+    <div>
+      <div class="eyebrow">ON THE WAY</div>
+      <h1>精彩，正在慢慢抵达</h1>
+      <p>关掉页面也没关系，你的下载会在后台继续。</p>
+    </div>
+    <button class="button primary" @click="navigate('home')">
+      <Icon name="plus" :size="16" />
+      添加收藏
+    </button>
+  </div>
+  <div class="queue-summary panel">
+    <div>
+      <span class="feature-icon sage"><Icon name="download" /></span>
+      <span>
+        <strong>{{ active.length }} 个片刻正在路上</strong>
+        <small>
+          {{
+            store.status?.worker_online
+              ? '独立 Worker 按顺序处理任务，预约任务到期后开始'
+              : 'Worker 尚未连接，请在偏好设置中查看服务状态'
+          }}
+        </small>
+      </span>
+    </div>
+    <div class="queue-live">
+      <span class="online-dot" :class="{ offline: !store.connected }"></span>
+      {{ store.connected ? '实时更新中' : '正在重新连接' }}
+      <button v-if="active.length" class="button small" @click="pauseAll">
+        <Icon name="pause" :size="14" />
+        全部暂停
+      </button>
+    </div>
+  </div>
+  <div class="filters">
+    <button
+      v-for="item in [
+        { id: 'all', name: '全部' },
+        { id: 'active', name: '进行中' },
+        { id: 'completed', name: '已完成' },
+        { id: 'paused', name: '已暂停' },
+        { id: 'failed', name: '需重试' },
+      ]"
+      :key="item.id"
+      class="chip"
+      :class="{ active: filter === item.id }"
+      @click="filter = item.id"
+    >
+      {{ item.name }}
+    </button>
+    <label class="search-field">
+      <span class="sr-only">搜索下载任务</span>
+      <Icon name="search" :size="16" />
+      <input v-model="query" placeholder="找一个片刻…" />
+    </label>
+  </div>
+  <section class="panel queue-list">
+    <EmptyState
+      v-if="!filtered.length"
+      icon="download"
+      :title="store.tasks.length ? '没有找到这个片刻' : '队列里，还是一片安静'"
+      :description="
+        store.tasks.length ? '试试其他搜索词或筛选条件。' : '把喜欢的视频链接带过来，让我们帮你慢慢收藏。'
+      "
+    >
+      <button v-if="!store.tasks.length" class="button small" @click="navigate('home')">
+        <Icon name="plus" :size="14" />
+        添加第一个收藏
+      </button>
+    </EmptyState>
+    <article v-for="task in filtered" :key="task.id" class="queue-item">
+      <div class="queue-thumb">
+        <img v-if="task.thumbnail" :src="task.thumbnail" alt="" referrerpolicy="no-referrer" />
+        <Icon v-else :name="task.preset === 'audio' ? 'headphones' : 'video'" :size="25" />
+        <span>{{ presets.find((p) => p.id === task.preset)?.label }}</span>
+      </div>
+      <div class="queue-item-main">
+        <div class="task-title-line">
+          <h3>{{ task.title || hostname(task.url) }}</h3>
+          <span :class="['status-pill', task.status]">
+            {{ scheduled(task) && task.status === 'queued' ? '已预约' : statusLabels[task.status] }}
+          </span>
+        </div>
+        <p class="task-meta">
+          {{ task.platform || hostname(task.url) }}
+          <span>·</span>
+          {{ presets.find((p) => p.id === task.preset)?.title }}
+          <span>·</span>
+          {{ task.duration ? duration(task.duration) : '等待解析信息' }}
+          <template v-if="task.clip_end !== null">
+            <span>·</span>
+            剪辑 {{ task.clip_start }}–{{ task.clip_end }} 秒
+          </template>
+        </p>
+        <template v-if="['downloading', 'processing'].includes(task.status)">
+          <div class="progress-track"><span :style="{ width: task.progress + '%' }"></span></div>
+          <div class="progress-info">
+            <span>
+              {{
+                task.status === 'processing'
+                  ? '正在合并或处理媒体…'
+                  : `${bytes(task.speed)}/s · 预计 ${Math.ceil(task.eta)} 秒`
+              }}
+            </span>
+            <strong>{{ Math.round(task.progress) }}%</strong>
+          </div>
+        </template>
+        <p v-else-if="scheduled(task) && task.status === 'queued'" class="schedule-note">
+          <Icon name="clock" :size="12" />
+          {{ new Date(task.scheduled_at!).toLocaleString('zh-CN') }} 开始
+        </p>
+        <p v-else-if="task.status === 'failed'" class="error-text task-error">{{ task.error }}</p>
+        <p v-else class="task-meta task-secondary">
+          {{
+            task.status === 'completed'
+              ? `已保存 ${bytes(task.file_size)} · 可以在媒体收藏中播放`
+              : task.status === 'paused'
+                ? '已保存下载片段，继续时尝试续传'
+                : task.status === 'cancelled'
+                  ? '已取消，可以重新加入队列'
+                  : '等待 Worker 领取任务'
+          }}
+        </p>
+      </div>
+      <div class="queue-actions">
+        <template v-if="deleteId === task.id">
+          <span class="delete-confirm">删除任务与文件？</span>
+          <button class="button small danger" :disabled="busy.has(task.id)" @click="remove(task)">
+            删除
+          </button>
+          <button class="icon-button" aria-label="保留任务" @click="deleteId = ''">
+            <Icon name="x" :size="15" />
+          </button>
+        </template>
+        <template v-else>
+          <button
+            v-if="['queued', 'downloading', 'processing'].includes(task.status)"
+            class="icon-button"
+            :disabled="busy.has(task.id)"
+            aria-label="暂停任务"
+            title="暂停"
+            @click="action(task, 'pause')"
+          >
+            <Icon name="pause" :size="17" />
+          </button>
+          <button
+            v-if="task.status === 'paused'"
+            class="icon-button"
+            :disabled="busy.has(task.id)"
+            aria-label="继续任务"
+            title="继续"
+            @click="action(task, 'resume')"
+          >
+            <Icon name="play" :size="17" />
+          </button>
+          <button
+            v-if="['failed', 'cancelled'].includes(task.status)"
+            class="icon-button"
+            :disabled="busy.has(task.id)"
+            aria-label="重试任务"
+            title="重试"
+            @click="action(task, 'retry')"
+          >
+            <Icon name="retry" :size="17" />
+          </button>
+          <a
+            v-if="task.status === 'completed'"
+            class="icon-button"
+            :href="`/api/tasks/${task.id}/file?download=true`"
+            aria-label="保存文件"
+            title="保存文件"
+          >
+            <Icon name="save" :size="17" />
+          </a>
+          <button
+            v-if="['queued', 'downloading', 'processing', 'paused'].includes(task.status)"
+            class="icon-button danger"
+            :disabled="busy.has(task.id)"
+            aria-label="取消任务"
+            title="取消"
+            @click="action(task, 'cancel')"
+          >
+            <Icon name="x" :size="17" />
+          </button>
+          <button
+            v-else
+            class="icon-button danger"
+            :disabled="busy.has(task.id)"
+            aria-label="删除任务"
+            title="删除任务及文件"
+            @click="deleteId = task.id"
+          >
+            <Icon name="trash" :size="17" />
+          </button>
+        </template>
+      </div>
+    </article>
+  </section>
+  <p class="queue-footnote">
+    <Icon name="help" :size="13" />
+    平台要求登录、地区限制或来源变化可能导致失败，具体原因会显示在任务中。
+  </p>
 </template>
 <style scoped>
-.queue-summary{display:flex;align-items:center;justify-content:space-between;padding:22px 24px;gap:20px;margin-bottom:25px}.queue-summary>div:first-child{display:flex;align-items:center;gap:15px}.queue-summary strong{display:block;font-size:13px;font-weight:500}.queue-summary small{display:block;font-size:10px;color:#9eaa91;margin-top:7px}.queue-live{display:flex;align-items:center;gap:9px;white-space:nowrap;font-size:10px;color:#94a186}.queue-live .button{margin-left:10px}.queue-list{padding:0 25px}.queue-item{padding:23px 0;display:flex;gap:18px;align-items:center;border-bottom:1px solid #eef1e7}.queue-item:last-child{border-bottom:0}.queue-thumb{width:106px;height:74px;flex-shrink:0;border-radius:9px;background:#edf2e7;color:#a9bb9d;display:grid;place-items:center;position:relative;overflow:hidden}.queue-thumb img{width:100%;height:100%;object-fit:cover}.queue-thumb>span{position:absolute;bottom:5px;right:5px;font-size:8px;padding:2px 5px;border-radius:3px;background:#fff9;color:#7d9071}.queue-item-main{flex:1;min-width:0}.task-title-line{display:flex;align-items:center;gap:10px}.task-title-line h3{font-size:12px;line-height:1.6;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.task-meta{font-size:10px;color:#a1ac95;display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:5px}.task-secondary{font-size:9px;margin-top:9px}.progress-track{margin-top:11px;max-width:450px}.progress-info{display:flex;justify-content:space-between;max-width:450px;font-size:9px;color:#a0ad91;margin-top:6px}.progress-info strong{font-weight:500;color:#86a172}.queue-actions{display:flex;gap:4px;align-items:center;max-width:200px;flex-wrap:wrap;justify-content:flex-end}.delete-confirm{font-size:10px;color:#ad786d}.task-error{font-size:10px;margin-top:6px;overflow-wrap:anywhere;max-width:600px}.schedule-note{display:flex;gap:5px;align-items:center;font-size:10px;color:#ab9b76;margin-top:8px}.queue-footnote{display:flex;align-items:center;gap:6px;font-size:10px;color:#a9b39e;margin:18px 2px}.queue-list:has(.empty-state){min-height:280px;display:flex;flex-direction:column;justify-content:center}
-@media(max-width:650px){.queue-summary{flex-direction:column;align-items:flex-start;padding:18px}.queue-live{width:100%;justify-content:flex-end}.queue-live .button{margin-left:auto}.queue-list{padding:0 16px}.queue-item{gap:12px;flex-wrap:wrap;padding:18px 0}.queue-thumb{width:64px;height:59px}.task-title-line{align-items:flex-start;flex-direction:column;gap:4px}.task-title-line h3{max-width:100%;font-size:11px}.queue-actions{margin-left:auto;max-width:none}.queue-footnote{font-size:9px;align-items:flex-start}.task-meta{font-size:9px}.queue-summary small{line-height:1.8}}
+.queue-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+.queue-summary > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.queue-summary strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.queue-summary small {
+  display: block;
+  font-size: 10px;
+  color: #9eaa91;
+  margin-top: 7px;
+}
+.queue-live {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #94a186;
+}
+.queue-live .button {
+  margin-left: 10px;
+}
+.queue-list {
+  padding: 0 25px;
+}
+.queue-item {
+  padding: 23px 0;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  border-bottom: 1px solid #eef1e7;
+}
+.queue-item:last-child {
+  border-bottom: 0;
+}
+.queue-thumb {
+  width: 106px;
+  height: 74px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #edf2e7;
+  color: #a9bb9d;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.queue-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.queue-thumb > span {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  font-size: 8px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: #fff9;
+  color: #7d9071;
+}
+.queue-item-main {
+  flex: 1;
+  min-width: 0;
+}
+.task-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.task-title-line h3 {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-meta {
+  font-size: 10px;
+  color: #a1ac95;
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 5px;
+}
+.task-secondary {
+  font-size: 9px;
+  margin-top: 9px;
+}
+.progress-track {
+  margin-top: 11px;
+  max-width: 450px;
+}
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  max-width: 450px;
+  font-size: 9px;
+  color: #a0ad91;
+  margin-top: 6px;
+}
+.progress-info strong {
+  font-weight: 500;
+  color: #86a172;
+}
+.queue-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 200px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.delete-confirm {
+  font-size: 10px;
+  color: #ad786d;
+}
+.task-error {
+  font-size: 10px;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  max-width: 600px;
+}
+.schedule-note {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 10px;
+  color: #ab9b76;
+  margin-top: 8px;
+}
+.queue-footnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #a9b39e;
+  margin: 18px 2px;
+}
+.queue-list:has(.empty-state) {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+@media (max-width: 650px) {
+  .queue-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+  }
+  .queue-live {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .queue-live .button {
+    margin-left: auto;
+  }
+  .queue-list {
+    padding: 0 16px;
+  }
+  .queue-item {
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 18px 0;
+  }
+  .queue-thumb {
+    width: 64px;
+    height: 59px;
+  }
+  .task-title-line {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .task-title-line h3 {
+    max-width: 100%;
+    font-size: 11px;
+  }
+  .queue-actions {
+    margin-left: auto;
+    max-width: none;
+  }
+  .queue-footnote {
+    font-size: 9px;
+    align-items: flex-start;
+  }
+  .task-meta {
+    font-size: 9px;
+  }
+  .queue-summary small {
+    line-height: 1.8;
+  }
+}
 </style>

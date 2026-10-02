@@ -3,30 +3,391 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import Icon from '../components/Icon.vue'
 import { api, bytes, initialize, message, notify, presets, refresh, store } from '../store'
 import type { Settings } from '../types'
-const form = reactive<Settings>({ ...store.settings }), saving = ref(false), checking = ref(false)
-watch(() => store.settings, value => Object.assign(form, value))
+const form = reactive<Settings>({ ...store.settings }),
+  saving = ref(false),
+  checking = ref(false)
+watch(
+  () => store.settings,
+  (value) => Object.assign(form, value),
+)
 async function save() {
   saving.value = true
-  try { await api('/settings', { method: 'PUT', body: JSON.stringify(form) }); await refresh(); notify('小偏好已保存，下次收藏就按你的节奏来') }
-  catch (e) { notify(message(e), true) }
-  finally { saving.value = false }
+  try {
+    await api('/settings', { method: 'PUT', body: JSON.stringify(form) })
+    await refresh()
+    notify('小偏好已保存，下次收藏就按你的节奏来')
+  } catch (e) {
+    notify(message(e), true)
+  } finally {
+    saving.value = false
+  }
 }
 async function check() {
   checking.value = true
-  try { await refresh(); notify('服务状态已更新') }
-  catch (e) { notify(message(e), true) }
-  finally { checking.value = false }
+  try {
+    await refresh()
+    notify('服务状态已更新')
+  } catch (e) {
+    notify(message(e), true)
+  } finally {
+    checking.value = false
+  }
 }
-async function logout() { await api('/session', { method: 'DELETE' }); store.ready = false; await initialize() }
+async function logout() {
+  await api('/session', { method: 'DELETE' })
+  store.ready = false
+  await initialize()
+}
 onMounted(() => refresh().catch(() => {}))
 </script>
 <template>
-  <div class="page-heading"><div><div class="eyebrow">AT YOUR OWN PACE</div><h1>按你的节奏来</h1><p>一点小偏好，让每次收藏都刚刚好。</p></div><button class="button" :disabled="checking" @click="check"><Icon :name="checking ? 'loader' : 'retry'" :size="16" :class="{ spinner: checking }" />刷新服务状态</button></div>
-  <div class="settings-layout"><form class="panel preferences-panel" @submit.prevent="save"><div class="panel-heading"><h2><Icon name="sliders" :size="18" />收藏偏好</h2><span class="badge">PERSONAL</span></div><p class="settings-caption">这些偏好会保存在本地，供下次添加任务使用。</p><label>默认收藏方式<select v-model="form.default_preset"><option v-for="item in presets" :key="item.id" :value="item.id">{{ item.title }} · {{ item.label }}</option></select></label><label>默认速度上限（KB/s）<input v-model.number="form.rate_limit" type="number" min="0" max="100000" required /></label><p class="field-hint">0 表示不限速。给其他网络活动留一点余地。</p><label>媒体存储限额（GB）<input v-model.number="form.storage_limit_gb" type="number" min="0.1" max="10000" step="0.1" required /></label><p class="field-hint">包含临时文件。达到限额后暂停新下载，不会自动删除已有收藏。</p><div class="preferences-bottom"><button class="button primary" :disabled="saving"><Icon name="check" :size="16" />{{ saving ? '正在保存…' : '保存小偏好' }}</button></div></form><div class="settings-aside"><section class="panel storage-panel"><div class="panel-heading"><h2><Icon name="storage" :size="17" />小天地的容量</h2></div><div class="storage-amount">{{ bytes(store.status?.storage_bytes ?? 0) }}<span>/ {{ store.settings.storage_limit_gb }} GB</span></div><div class="progress-track"><span :style="{ width: Math.min(100, (store.status?.storage_bytes ?? 0) / (store.settings.storage_limit_gb * 1024 ** 3) * 100) + '%' }"></span></div><p>设备可用空间 {{ bytes(store.status?.disk_free_bytes ?? 0) }}</p><span class="storage-note"><Icon name="leaf" :size="14" />偶尔整理一下，给新灵感留点空间。</span></section><section class="configuration-note"><Icon name="shield" :size="24" /><h3>你的内容，留在你的设备</h3><p>数据库与媒体通过 Docker 持久化保存。Cookie 和 AI 密钥在部署环境配置，页面不显示敏感信息。</p><a class="text-link" href="https://github.com/cjm1020/all-in-one-video-downloader/blob/main/docs/DEPLOYMENT.md" target="_blank" rel="noopener noreferrer">查看部署与配置说明<Icon name="arrow" :size="13" /></a></section></div></div>
-  <section class="panel services-panel"><div class="panel-heading"><h2><Icon name="zap" :size="18" />服务小仪表</h2><span class="section-caption">三服务 Docker 架构 · WEB / API / WORKER</span></div><div class="service-grid"><div class="service-item"><span class="feature-icon sage"><Icon name="download" :size="18" /></span><div><strong>下载 Worker</strong><small>{{ store.status?.worker_online ? '心跳正常 · 随时准备收藏' : '尚未连接 · 请检查容器日志' }}</small></div><span class="online-dot" :class="{ offline: !store.status?.worker_online }"></span></div><div class="service-item"><span class="feature-icon peach"><Icon name="video" :size="18" /></span><div><strong>FFmpeg</strong><small>{{ store.status?.ffmpeg_available ? '已就位 · 合并、音频与片段' : '未安装 · 转码功能不可用' }}</small></div><span class="online-dot" :class="{ offline: !store.status?.ffmpeg_available }"></span></div><div class="service-item"><span class="feature-icon lavender"><Icon name="sparkles" :size="18" /></span><div><strong>DeepSeek AI</strong><small>{{ store.status?.ai_available ? '已配置 · 可以生成学习摘要' : '可选配置 · 本地提取仍可使用' }}</small></div><span class="online-dot" :class="{ offline: !store.status?.ai_available }"></span></div><div class="service-item"><span class="feature-icon sky"><Icon name="shield" :size="18" /></span><div><strong>来源 Cookie</strong><small>{{ store.status?.cookies_configured ? '已配置 · 使用授权会话' : '未配置 · 下载无需登录的内容' }}</small></div><span class="online-dot" :class="{ offline: !store.status?.cookies_configured }"></span></div></div><div class="services-bottom"><span>下载引擎 yt-dlp {{ store.status?.engine_version || '等待连接' }}</span><span>{{ store.connected ? 'SSE 已连接 · 进度实时同步' : 'SSE 正在重新连接' }}</span></div></section>
-  <div class="settings-footer"><p><Icon name="heart" :size="14" />All-in-One Video Downloader · 用心收藏，轻装前行</p><button class="text-link" @click="logout"><Icon name="logout" :size="14" />退出访问会话</button></div>
+  <div class="page-heading">
+    <div>
+      <div class="eyebrow">AT YOUR OWN PACE</div>
+      <h1>按你的节奏来</h1>
+      <p>一点小偏好，让每次收藏都刚刚好。</p>
+    </div>
+    <button class="button" :disabled="checking" @click="check">
+      <Icon :name="checking ? 'loader' : 'retry'" :size="16" :class="{ spinner: checking }" />
+      刷新服务状态
+    </button>
+  </div>
+  <div class="settings-layout">
+    <form class="panel preferences-panel" @submit.prevent="save">
+      <div class="panel-heading">
+        <h2>
+          <Icon name="sliders" :size="18" />
+          收藏偏好
+        </h2>
+        <span class="badge">PERSONAL</span>
+      </div>
+      <p class="settings-caption">这些偏好会保存在本地，供下次添加任务使用。</p>
+      <label>
+        默认收藏方式
+        <select v-model="form.default_preset">
+          <option v-for="item in presets" :key="item.id" :value="item.id">
+            {{ item.title }} · {{ item.label }}
+          </option>
+        </select>
+      </label>
+      <label>
+        默认速度上限（KB/s）
+        <input v-model.number="form.rate_limit" type="number" min="0" max="100000" required />
+      </label>
+      <p class="field-hint">0 表示不限速。给其他网络活动留一点余地。</p>
+      <label>
+        媒体存储限额（GB）
+        <input
+          v-model.number="form.storage_limit_gb"
+          type="number"
+          min="0.1"
+          max="10000"
+          step="0.1"
+          required
+        />
+      </label>
+      <p class="field-hint">包含临时文件。达到限额后暂停新下载，不会自动删除已有收藏。</p>
+      <div class="preferences-bottom">
+        <button class="button primary" :disabled="saving">
+          <Icon name="check" :size="16" />
+          {{ saving ? '正在保存…' : '保存小偏好' }}
+        </button>
+      </div>
+    </form>
+    <div class="settings-aside">
+      <section class="panel storage-panel">
+        <div class="panel-heading">
+          <h2>
+            <Icon name="storage" :size="17" />
+            小天地的容量
+          </h2>
+        </div>
+        <div class="storage-amount">
+          {{ bytes(store.status?.storage_bytes ?? 0) }}
+          <span>/ {{ store.settings.storage_limit_gb }} GB</span>
+        </div>
+        <div class="progress-track">
+          <span
+            :style="{
+              width:
+                Math.min(
+                  100,
+                  ((store.status?.storage_bytes ?? 0) / (store.settings.storage_limit_gb * 1024 ** 3)) * 100,
+                ) + '%',
+            }"
+          ></span>
+        </div>
+        <p>设备可用空间 {{ bytes(store.status?.disk_free_bytes ?? 0) }}</p>
+        <span class="storage-note">
+          <Icon name="leaf" :size="14" />
+          偶尔整理一下，给新灵感留点空间。
+        </span>
+      </section>
+      <section class="configuration-note">
+        <Icon name="shield" :size="24" />
+        <h3>你的内容，留在你的设备</h3>
+        <p>数据库与媒体通过 Docker 持久化保存。Cookie 和 AI 密钥在部署环境配置，页面不显示敏感信息。</p>
+        <a
+          class="text-link"
+          href="https://github.com/cjm1020/all-in-one-video-downloader/blob/main/docs/DEPLOYMENT.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          查看部署与配置说明
+          <Icon name="arrow" :size="13" />
+        </a>
+      </section>
+    </div>
+  </div>
+  <section class="panel services-panel">
+    <div class="panel-heading">
+      <h2>
+        <Icon name="zap" :size="18" />
+        服务小仪表
+      </h2>
+      <span class="section-caption">三服务 Docker 架构 · WEB / API / WORKER</span>
+    </div>
+    <div class="service-grid">
+      <div class="service-item">
+        <span class="feature-icon sage"><Icon name="download" :size="18" /></span>
+        <div>
+          <strong>下载 Worker</strong>
+          <small>
+            {{ store.status?.worker_online ? '心跳正常 · 随时准备收藏' : '尚未连接 · 请检查容器日志' }}
+          </small>
+        </div>
+        <span class="online-dot" :class="{ offline: !store.status?.worker_online }"></span>
+      </div>
+      <div class="service-item">
+        <span class="feature-icon peach"><Icon name="video" :size="18" /></span>
+        <div>
+          <strong>FFmpeg</strong>
+          <small>
+            {{ store.status?.ffmpeg_available ? '已就位 · 合并、音频与片段' : '未安装 · 转码功能不可用' }}
+          </small>
+        </div>
+        <span class="online-dot" :class="{ offline: !store.status?.ffmpeg_available }"></span>
+      </div>
+      <div class="service-item">
+        <span class="feature-icon lavender"><Icon name="sparkles" :size="18" /></span>
+        <div>
+          <strong>DeepSeek AI</strong>
+          <small>
+            {{ store.status?.ai_available ? '已配置 · 可以生成学习摘要' : '可选配置 · 本地提取仍可使用' }}
+          </small>
+        </div>
+        <span class="online-dot" :class="{ offline: !store.status?.ai_available }"></span>
+      </div>
+      <div class="service-item">
+        <span class="feature-icon sky"><Icon name="shield" :size="18" /></span>
+        <div>
+          <strong>来源 Cookie</strong>
+          <small>
+            {{ store.status?.cookies_configured ? '已配置 · 使用授权会话' : '未配置 · 下载无需登录的内容' }}
+          </small>
+        </div>
+        <span class="online-dot" :class="{ offline: !store.status?.cookies_configured }"></span>
+      </div>
+    </div>
+    <div class="services-bottom">
+      <span>下载引擎 yt-dlp {{ store.status?.engine_version || '等待连接' }}</span>
+      <span>{{ store.connected ? 'SSE 已连接 · 进度实时同步' : 'SSE 正在重新连接' }}</span>
+    </div>
+  </section>
+  <div class="settings-footer">
+    <p>
+      <Icon name="heart" :size="14" />
+      All-in-One Video Downloader · 用心收藏，轻装前行
+    </p>
+    <button class="text-link" @click="logout">
+      <Icon name="logout" :size="14" />
+      退出访问会话
+    </button>
+  </div>
 </template>
 <style scoped>
-.settings-layout{display:grid;grid-template-columns:1.35fr 1fr;gap:22px;align-items:start}.preferences-panel{padding:26px}.settings-caption{font-size:10px;color:#a0ab94;margin:12px 0 25px}.preferences-panel>label{margin-top:21px;font-size:11px}.preferences-panel>label select,.preferences-panel>label input{font-size:11px;padding:12px}.field-hint{font-size:9px;color:#abb59e;margin-top:7px;line-height:1.8}.preferences-bottom{border-top:1px solid #e9eddf;display:flex;justify-content:flex-end;margin-top:26px;padding-top:20px}.settings-aside{display:flex;flex-direction:column;gap:21px}.storage-panel{padding:26px}.storage-amount{font-size:28px;font-weight:500;letter-spacing:-1px;margin:30px 0 15px}.storage-amount span{font-size:11px;color:#a4ae96;font-weight:400;margin-left:8px;letter-spacing:0}.storage-panel>p{font-size:10px;color:#a2ae94;margin:11px 0 18px}.storage-note{display:flex;align-items:center;gap:8px;font-size:10px;color:#94a581;border-top:1px solid #eaf0e0;padding-top:17px}.configuration-note{background:#f0f3e9;border:1px solid #e6ecda;border-radius:13px;padding:26px;color:#9aac8c}.configuration-note h3{font-size:13px;font-weight:500;margin-top:15px}.configuration-note p{font-size:10px;margin:9px 0 16px;line-height:2;color:#a3ad96}.configuration-note a{font-size:10px}.services-panel{padding:25px;margin-top:25px}.service-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 30px;margin-top:15px}.service-item{display:flex;align-items:center;gap:13px;padding:22px 0;border-bottom:1px solid #edf1e5}.service-item>div{flex:1}.service-item strong{font-size:11px;display:block;font-weight:500}.service-item small{font-size:9px;color:#a8b299;display:block;margin-top:7px}.service-item .feature-icon{width:35px;height:35px;border-radius:10px}.services-bottom{display:flex;justify-content:space-between;gap:10px;font-size:9px;color:#abb59e;margin-top:19px}.settings-footer{display:flex;justify-content:space-between;gap:15px;margin-top:23px;font-size:10px;color:#a4af98;align-items:center}.settings-footer p{display:flex;gap:7px;align-items:center}.settings-footer button{font-size:10px}
-@media(max-width:650px){.settings-layout{grid-template-columns:1fr}.preferences-panel,.storage-panel{padding:22px}.settings-aside{gap:15px}.service-grid{grid-template-columns:1fr}.services-panel{padding:22px}.services-panel .panel-heading{align-items:flex-start;flex-direction:column;gap:9px}.services-bottom{flex-direction:column;font-size:8px}.settings-footer{flex-direction:column;align-items:flex-start}}
+.settings-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.preferences-panel {
+  padding: 26px;
+}
+.settings-caption {
+  font-size: 10px;
+  color: #a0ab94;
+  margin: 12px 0 25px;
+}
+.preferences-panel > label {
+  margin-top: 21px;
+  font-size: 11px;
+}
+.preferences-panel > label select,
+.preferences-panel > label input {
+  font-size: 11px;
+  padding: 12px;
+}
+.field-hint {
+  font-size: 9px;
+  color: #abb59e;
+  margin-top: 7px;
+  line-height: 1.8;
+}
+.preferences-bottom {
+  border-top: 1px solid #e9eddf;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 26px;
+  padding-top: 20px;
+}
+.settings-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 21px;
+}
+.storage-panel {
+  padding: 26px;
+}
+.storage-amount {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -1px;
+  margin: 30px 0 15px;
+}
+.storage-amount span {
+  font-size: 11px;
+  color: #a4ae96;
+  font-weight: 400;
+  margin-left: 8px;
+  letter-spacing: 0;
+}
+.storage-panel > p {
+  font-size: 10px;
+  color: #a2ae94;
+  margin: 11px 0 18px;
+}
+.storage-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #94a581;
+  border-top: 1px solid #eaf0e0;
+  padding-top: 17px;
+}
+.configuration-note {
+  background: #f0f3e9;
+  border: 1px solid #e6ecda;
+  border-radius: 13px;
+  padding: 26px;
+  color: #9aac8c;
+}
+.configuration-note h3 {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 15px;
+}
+.configuration-note p {
+  font-size: 10px;
+  margin: 9px 0 16px;
+  line-height: 2;
+  color: #a3ad96;
+}
+.configuration-note a {
+  font-size: 10px;
+}
+.services-panel {
+  padding: 25px;
+  margin-top: 25px;
+}
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 30px;
+  margin-top: 15px;
+}
+.service-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 22px 0;
+  border-bottom: 1px solid #edf1e5;
+}
+.service-item > div {
+  flex: 1;
+}
+.service-item strong {
+  font-size: 11px;
+  display: block;
+  font-weight: 500;
+}
+.service-item small {
+  font-size: 9px;
+  color: #a8b299;
+  display: block;
+  margin-top: 7px;
+}
+.service-item .feature-icon {
+  width: 35px;
+  height: 35px;
+  border-radius: 10px;
+}
+.services-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 9px;
+  color: #abb59e;
+  margin-top: 19px;
+}
+.settings-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 23px;
+  font-size: 10px;
+  color: #a4af98;
+  align-items: center;
+}
+.settings-footer p {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.settings-footer button {
+  font-size: 10px;
+}
+@media (max-width: 650px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+  .preferences-panel,
+  .storage-panel {
+    padding: 22px;
+  }
+  .settings-aside {
+    gap: 15px;
+  }
+  .service-grid {
+    grid-template-columns: 1fr;
+  }
+  .services-panel {
+    padding: 22px;
+  }
+  .services-panel .panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .services-bottom {
+    flex-direction: column;
+    font-size: 8px;
+  }
+  .settings-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
 </style>
