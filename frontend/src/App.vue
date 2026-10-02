@@ -9,6 +9,8 @@ const views = {
   queue: defineAsyncComponent(() => import('./views/QueueView.vue')),
   library: defineAsyncComponent(() => import('./views/LibraryView.vue')),
   learning: defineAsyncComponent(() => import('./views/LearningView.vue')),
+  studio: defineAsyncComponent(() => import('./views/StudioView.vue')),
+  insights: defineAsyncComponent(() => import('./views/InsightsView.vue')),
   settings: defineAsyncComponent(() => import('./views/SettingsView.vue')),
 }
 const navigation: { id: Page; icon: string; title: string; caption: string }[] = [
@@ -16,6 +18,8 @@ const navigation: { id: Page; icon: string; title: string; caption: string }[] =
   { id: 'queue', icon: 'queue', title: '下载队列', caption: '让精彩慢慢抵达' },
   { id: 'library', icon: 'library', title: '媒体收藏', caption: '喜欢的，都在这里' },
   { id: 'learning', icon: 'book', title: '学习花园', caption: '把内容变成收获' },
+  { id: 'studio', icon: 'folder', title: '创作交付', caption: '把灵感变成作品' },
+  { id: 'insights', icon: 'sparkles', title: '经营洞察', caption: '看见积累的价值' },
   { id: 'settings', icon: 'sliders', title: '偏好设置', caption: '按你的节奏来' },
 ]
 const token = ref(''),

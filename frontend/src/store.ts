@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 import type { Collection, Page, Settings, Status, Task } from './types'
 
-const pages: Page[] = ['home', 'queue', 'library', 'learning', 'settings']
+const pages: Page[] = ['home', 'queue', 'library', 'learning', 'studio', 'insights', 'settings']
 const initial = location.hash.slice(1) as Page
 export const store = reactive({
   page: pages.includes(initial) ? initial : ('home' as Page),

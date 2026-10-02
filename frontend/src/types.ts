@@ -1,4 +1,4 @@
-export type Page = 'home' | 'queue' | 'library' | 'learning' | 'settings'
+export type Page = 'home' | 'queue' | 'library' | 'learning' | 'studio' | 'insights' | 'settings'
 export type Preset = 'everyday' | 'archive' | 'commute' | 'audio'
 export type TaskStatus =
   | 'queued'
