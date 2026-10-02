@@ -4,6 +4,7 @@ import EmptyState from '../components/EmptyState.vue'
 import Icon from '../components/Icon.vue'
 import KnowledgeSearch from '../components/KnowledgeSearch.vue'
 import TaskMarkers from '../components/TaskMarkers.vue'
+import StudyCards from '../components/StudyCards.vue'
 import { api, duration, message, navigate, notify, refresh, store } from '../store'
 import type { TaskDetail } from '../types'
 
@@ -247,6 +248,7 @@ onMounted(() => {
           "
         />
         <TaskMarkers :task="detail" :position="selectedPosition" />
+        <StudyCards :task="detail" />
         <div v-if="detail.notes" class="learning-notes">
           <h3>
             <Icon name="file" :size="15" />
