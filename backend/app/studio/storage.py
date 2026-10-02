@@ -43,8 +43,39 @@ def list_projects() -> list[dict]:
 def project_detail(project_id: str) -> dict:
     with db.connection() as conn:
         project = require_project(conn, project_id)
-        return {"project": project, "items": [], "checklist": {"total": 0, "completed": 0, "licensed": 0,
-                "ready": False, "issues": [{"task_id": None, "reason": "请先添加项目素材"}]}}
+        items = project_items(conn, project_id)
+        issues = [{"task_id": item["id"], "reason": "请审核素材授权"} for item in items]
+        if not items:
+            issues.append({"task_id": None, "reason": "请先添加项目素材"})
+        return {"project": project, "items": items, "checklist": {"total": len(items),
+                "completed": sum(item["status"] == "completed" for item in items), "licensed": 0,
+                "ready": False, "issues": issues}}
+
+
+def project_items(conn, project_id: str) -> list[dict]:
+    return [db.serialize(row) for row in conn.execute(
+        """SELECT t.* FROM tasks t JOIN studio_project_items i ON i.task_id=t.id
+        WHERE i.project_id=? ORDER BY t.created_at, t.id""", (project_id,)
+    )]
+
+
+def replace_items(project_id: str, task_ids: list[str]) -> dict:
+    task_ids = list(dict.fromkeys(task_ids))
+    with db.connection() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        project = require_project(conn, project_id)
+        if project["status"] == "delivered":
+            raise HTTPException(409, "请将项目重新设为进行中，再修改交付素材")
+        if task_ids:
+            placeholders = ",".join("?" for _ in task_ids)
+            found = {row[0] for row in conn.execute(f"SELECT id FROM tasks WHERE id IN ({placeholders})", task_ids)}
+            if len(found) != len(task_ids):
+                raise HTTPException(404, "所选素材不存在，请刷新后重试")
+        conn.execute("DELETE FROM studio_project_items WHERE project_id=?", (project_id,))
+        conn.executemany("INSERT INTO studio_project_items VALUES (?,?)", ((project_id, value) for value in task_ids))
+        conn.execute("UPDATE studio_projects SET updated_at=? WHERE id=?", (db.now(), project_id))
+        record(conn, "project.items_updated", project_id, {"count": len(task_ids)})
+    return project_detail(project_id)
 
 
 def patch_project(project_id: str, data) -> dict:
