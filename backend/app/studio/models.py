@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from ..security import normalize_url
 
 ProjectStatus = Literal["draft", "active", "delivered"]
+MAX_PROJECT_ITEMS = 500
 
 
 class StudioModel(BaseModel):
@@ -57,7 +58,7 @@ class ProjectPatch(StudioModel):
 
 
 class ItemReplace(StudioModel):
-    task_ids: list[str] = Field(max_length=500)
+    task_ids: list[str] = Field(max_length=MAX_PROJECT_ITEMS)
 
 
 class RightsPatch(StudioModel):

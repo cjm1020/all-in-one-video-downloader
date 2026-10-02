@@ -4,6 +4,7 @@ import uuid
 from fastapi import HTTPException
 
 from .. import db
+from .models import MAX_PROJECT_ITEMS
 from .storage import record, require_project
 
 BUILTINS = (
@@ -77,6 +78,9 @@ def run_workflow(workflow_id: str, urls: list[str], project_id: str | None) -> d
             project = require_project(conn, project_id)
             if project["status"] == "delivered":
                 raise HTTPException(409, "请重新打开项目后再运行工作流")
+            item_count = conn.execute(
+                "SELECT COUNT(*) FROM studio_project_items WHERE project_id=?", (project_id,)
+            ).fetchone()[0]
         for url in urls:
             if conn.execute(
                 """SELECT id FROM tasks WHERE url=? AND preset=? AND clip_start IS NULL AND clip_end IS NULL
@@ -85,6 +89,8 @@ def run_workflow(workflow_id: str, urls: list[str], project_id: str | None) -> d
                 skipped.append(url)
                 continue
             task_id, timestamp = str(uuid.uuid4()), db.now()
+            if project_id is not None and item_count + len(added) >= MAX_PROJECT_ITEMS:
+                raise HTTPException(413, f"一个项目最多包含 {MAX_PROJECT_ITEMS} 个素材，请拆分项目")
             conn.execute(
                 """INSERT INTO tasks
                 (id,url,preset,collection_id,tags,rate_limit,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)""",
