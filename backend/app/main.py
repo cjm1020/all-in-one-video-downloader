@@ -178,3 +178,7 @@ app.include_router(library_router)
 from .learning import router as learning_router  # noqa: E402
 
 app.include_router(learning_router)
+
+from .status import router as status_router  # noqa: E402
+
+app.include_router(status_router)
