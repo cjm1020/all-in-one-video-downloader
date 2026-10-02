@@ -1,4 +1,3 @@
-import html
 import re
 from collections import Counter
 
@@ -6,7 +5,9 @@ import httpx
 from fastapi import APIRouter, HTTPException
 
 from . import db
+from .captions import caption_text, parse_captions
 from .config import config
+from .knowledge_db import replace_transcript
 from .library import require_task
 from .models import SummaryRequest, TranscriptRequest
 
@@ -14,16 +15,7 @@ router = APIRouter(prefix="/api/tasks")
 
 
 def clean_transcript(text: str) -> str:
-    lines, previous = [], ""
-    for line in text.replace("\r", "").splitlines():
-        line = line.strip()
-        if not line or line.isdigit() or "-->" in line or line.startswith(("WEBVTT", "NOTE", "Kind:", "Language:")):
-            continue
-        line = html.unescape(re.sub(r"<[^>]+>", "", line))
-        if line and line != previous:
-            lines.append(line)
-            previous = line
-    return "\n".join(lines)
+    return caption_text(parse_captions(text))
 
 
 def local_summary(text: str) -> str:
@@ -47,10 +39,12 @@ def local_summary(text: str) -> str:
 @router.post("/{task_id}/transcript")
 def import_transcript(task_id: str, data: TranscriptRequest):
     require_task(task_id)
-    cleaned = clean_transcript(data.text)
+    cues = parse_captions(data.text)
+    cleaned = caption_text(cues)
     if not cleaned:
         raise HTTPException(400, "没有识别到有效字幕文本")
-    db.update_task(task_id, {"transcript": cleaned, "summary": "", "summary_mode": ""})
+    if not replace_transcript(task_id, cleaned, cues):
+        raise HTTPException(404, "任务不存在")
     return require_task(task_id)
 
 
