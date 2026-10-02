@@ -35,12 +35,21 @@ def source_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def replace_transcript(task_id: str, cleaned: str, cues: list[dict], only_status: tuple | None = None) -> bool:
+def replace_transcript(
+    task_id: str, cleaned: str, cues: list[dict], only_status: tuple | None = None,
+    media_values: dict | None = None,
+) -> bool:
     """Atomically update text, cue index, summary, and generated-card validity."""
     with db.connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        sql = "UPDATE tasks SET transcript=?,summary='',summary_mode='',updated_at=? WHERE id=?"
-        params = [cleaned, db.now(), task_id]
+        values = {"transcript": cleaned, "summary": "", "summary_mode": "", "updated_at": db.now()}
+        allowed_media = {"status", "progress", "speed", "eta", "file_path", "file_size", "duration", "thumbnail", "error"}
+        if media_values:
+            if set(media_values) - allowed_media:
+                raise ValueError("无效媒体完成字段")
+            values.update(media_values)
+        sql = f"UPDATE tasks SET {','.join(f'{key}=?' for key in values)} WHERE id=?"
+        params = [*values.values(), task_id]
         if only_status:
             sql += f" AND status IN ({','.join('?' for _ in only_status)})"
             params.extend(only_status)

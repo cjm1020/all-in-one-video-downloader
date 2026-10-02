@@ -4,8 +4,10 @@ import sys
 import time
 
 from . import db
+from .captions import caption_text, for_clip, parse_captions
 from .config import config
 from .extractor import SafeYoutubeDL, base_options, metadata
+from .knowledge_db import replace_transcript
 from .security import install_network_guard, validate_public_url
 
 PRESETS = {
@@ -153,26 +155,30 @@ def run_download(task_id: str):
         if generated.returncode == 0 and poster.is_file():
             thumbnail = f"/api/tasks/{task_id}/poster"
     captions = list(directory.glob("*.vtt")) + list(directory.glob("*.srt"))
-    transcript = ""
+    cues = []
     if captions:
-        from .learning import clean_transcript
-
-        transcript = clean_transcript(captions[0].read_text(encoding="utf-8", errors="replace")[:250000])
-    db.update_task(
+        cues = for_clip(
+            parse_captions(captions[0].read_text(encoding="utf-8", errors="replace")[:250000]),
+            task["clip_start"], task["clip_end"],
+        )
+    replace_transcript(
         task_id,
-        {
+        caption_text(cues), cues,
+        only_status=("downloading", "processing"),
+        media_values={
             "status": "completed",
             "progress": 100,
             "speed": 0,
             "eta": 0,
             "file_path": str(output.relative_to(config.media_dir)),
             "file_size": output.stat().st_size,
-            "duration": source_duration or info.get("duration") or 0,
+            "duration": (
+                task["clip_end"] - task["clip_start"] if task["clip_end"] is not None
+                else source_duration or info.get("duration") or 0
+            ),
             "thumbnail": thumbnail,
-            "transcript": transcript,
             "error": "",
         },
-        ("downloading", "processing"),
     )
 
 
