@@ -82,3 +82,27 @@ class RightsPatch(StudioModel):
         if self.evidence_url:
             self.evidence_url = normalize_url(self.evidence_url)
         return self
+
+
+class WorkflowCreate(StudioModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field("", max_length=2000)
+    preset: Literal["everyday", "archive", "commute", "audio"] = "everyday"
+    collection_id: str = Field("inbox", min_length=1, max_length=80)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+    rate_limit: int = Field(0, ge=0, le=100000)
+
+    @field_validator("name")
+    @classmethod
+    def trim_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("工作流名称不能为空")
+        return value
+
+    @field_validator("tags")
+    @classmethod
+    def clean_tags(cls, values: list[str]) -> list[str]:
+        if any(len(value) > 200 for value in values):
+            raise ValueError("标签内容过长")
+        return list(dict.fromkeys(value.strip()[:30] for value in values if value.strip()))

@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
 from .. import db
-from . import storage
-from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch
+from . import storage, workflows
+from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch, WorkflowCreate
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
 
@@ -47,3 +47,19 @@ def get_rights(task_id: str):
 @router.put("/rights/{task_id}")
 def set_rights(task_id: str, data: RightsPatch):
     return storage.set_rights(task_id, data)
+
+
+@router.get("/workflows")
+def list_workflows():
+    return workflows.list_workflows()
+
+
+@router.post("/workflows", status_code=201)
+def create_workflow(data: WorkflowCreate):
+    return workflows.create_workflow(data)
+
+
+@router.delete("/workflows/{workflow_id}")
+def delete_workflow(workflow_id: str):
+    workflows.delete_workflow(workflow_id)
+    return {"ok": True}
