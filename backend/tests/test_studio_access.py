@@ -43,7 +43,10 @@ def test_project_index_reports_counts_without_loading_item_documents(client, tas
 
     project = client.post("/api/studio/projects", json={"name": "聚合项目"}).json()
     client.put(f"/api/studio/projects/{project['id']}/items", json={"task_ids": [task["id"]]})
-    db.update_task(task["id"], {"status": "completed"})
+    root = db.config.media_dir / task["id"]
+    root.mkdir()
+    (root / "source.mp4").write_bytes(b"completed media")
+    db.update_task(task["id"], {"status": "completed", "file_path": f"{task['id']}/source.mp4"})
     client.put(f"/api/studio/rights/{task['id']}", json={"license": "cc0", "verified": True})
 
     def fail_load(*args):

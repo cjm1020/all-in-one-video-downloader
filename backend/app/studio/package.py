@@ -10,29 +10,14 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from .. import db
-from ..config import config
 from .exports import csv_manifest, json_manifest, markdown_manifest
+from .media import safe_path
 from .storage import project_snapshot, record
 
 MAX_PACKAGE_BYTES = 512 * 1024 * 1024
 MAX_PACKAGE_ITEMS = 100
 CHUNK_BYTES = 1024 * 1024
 package_slots = threading.BoundedSemaphore(2)
-
-
-def safe_path(task: dict) -> Path:
-    media_root = config.media_dir.resolve()
-    identifier = task["id"]
-    if Path(identifier).name != identifier or identifier in {".", ".."}:
-        raise HTTPException(409, "素材标识无效")
-    root = (media_root / identifier).resolve()
-    path_value = task["file_path"]
-    if not path_value or Path(path_value).is_absolute():
-        raise HTTPException(409, "素材文件尚未准备好")
-    target = (media_root / path_value).resolve()
-    if root.parent != media_root or not target.is_relative_to(root) or not target.is_file():
-        raise HTTPException(409, "素材文件已丢失或路径无效，请重新下载")
-    return target
 
 
 def archive_filename(index: int, task: dict, path: Path) -> str:

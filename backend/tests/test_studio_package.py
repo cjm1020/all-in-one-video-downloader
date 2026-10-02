@@ -4,11 +4,11 @@ import json
 import zipfile
 
 from app import db
-from app.studio import package
+from app.studio import media, package
 
 
 def package_project(client, task, content=b"licensed media"):
-    root = package.config.media_dir / task["id"]
+    root = media.config.media_dir / task["id"]
     root.mkdir()
     (root / "source.mp4").write_bytes(content)
     db.update_task(
@@ -54,7 +54,7 @@ def test_archive_rejects_unreviewed_and_outside_media_paths(client, task):
     client.put(f"/api/studio/rights/{task['id']}", json={"license": "owned", "verified": True})
     db.update_task(task["id"], {"file_path": "../library.sqlite3"})
     assert client.get(endpoint).status_code == 409
-    db.update_task(task["id"], {"file_path": str(package.config.db_path)})
+    db.update_task(task["id"], {"file_path": str(media.config.db_path)})
     assert client.get(endpoint).status_code == 409
 
 
@@ -63,7 +63,7 @@ def test_archive_uses_actual_file_size_not_database_estimate(client, task, monke
     monkeypatch.setattr(package, "MAX_PACKAGE_BYTES", 32)
     assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 413
     monkeypatch.setattr(package, "MAX_PACKAGE_BYTES", 512 * 1024 * 1024)
-    (package.config.media_dir / task["id"] / "source.mp4").write_bytes(b"")
+    (media.config.media_dir / task["id"] / "source.mp4").write_bytes(b"")
     assert client.get(f"/api/studio/projects/{project_id}/package").status_code == 409
 
 

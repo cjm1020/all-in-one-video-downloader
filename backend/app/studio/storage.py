@@ -4,6 +4,7 @@ import uuid
 from fastapi import HTTPException
 
 from .. import db
+from .media import availability
 
 
 def record(conn, action: str, entity_id: str, details: dict | None = None):
@@ -43,6 +44,12 @@ def create_project(data) -> dict:
 
 def list_projects() -> list[dict]:
     with db.connection() as conn:
+        conn.execute("BEGIN")
+        available = {}
+        for row in conn.execute("""SELECT t.id,t.status,t.file_path,i.project_id FROM tasks t
+            JOIN studio_project_items i ON i.task_id=t.id WHERE t.status='completed'"""):
+            if availability(dict(row))[0]:
+                available[row["project_id"]] = available.get(row["project_id"], 0) + 1
         result = []
         for row in conn.execute("""SELECT p.*,COUNT(t.id) AS item_count,
             COALESCE(SUM(t.status='completed'),0) AS completed_count,
@@ -53,6 +60,7 @@ def list_projects() -> list[dict]:
             LEFT JOIN tasks t ON t.id=i.task_id LEFT JOIN studio_rights r ON r.task_id=t.id
             GROUP BY p.id ORDER BY p.created_at DESC,p.id"""):
             project = dict(row)
+            project["completed_count"] = available.get(project["id"], 0)
             project["ready"] = bool(
                 project["item_count"]
                 and project["completed_count"] == project["item_count"]
@@ -81,10 +89,10 @@ def checklist(items: list[dict]) -> dict:
     issues = []
     completed, licensed = 0, 0
     for item in items:
-        if item["status"] == "completed":
+        if item["media_ready"]:
             completed += 1
         else:
-            issues.append({"task_id": item["id"], "reason": "素材下载尚未完成"})
+            issues.append({"task_id": item["id"], "reason": item["media_issue"]})
         if rights_valid(item["rights"]):
             licensed += 1
         else:
@@ -115,6 +123,7 @@ def project_items(conn, project_id: str) -> list[dict]:
         (project_id,),
     ):
         item = db.serialize(row)
+        item["media_ready"], item["media_issue"] = availability(dict(row))
         item["rights"] = {
             "task_id": item["id"],
             "license": item.pop("license") or "unknown",

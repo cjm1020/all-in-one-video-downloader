@@ -8,7 +8,19 @@ def test_analytics_distinguishes_planned_budget_completed_media_and_rights(clien
     client.post("/api/studio/projects", json={"name": "客户 B", "budget_cents": 10000})
     client.patch(f"/api/studio/projects/{first['id']}", json={"status": "active"})
     client.put(f"/api/studio/projects/{first['id']}/items", json={"task_ids": [task["id"]]})
-    db.update_task(task["id"], {"status": "completed", "duration": 180, "file_size": 300, "platform": "Example"})
+    root = db.config.media_dir / task["id"]
+    root.mkdir()
+    (root / "source.mp4").write_bytes(b"x" * 300)
+    db.update_task(
+        task["id"],
+        {
+            "status": "completed",
+            "duration": 180,
+            "file_size": 300,
+            "platform": "Example",
+            "file_path": f"{task['id']}/source.mp4",
+        },
+    )
     client.put(f"/api/studio/rights/{task['id']}", json={"license": "owned", "verified": True})
     client.patch(f"/api/studio/projects/{first['id']}", json={"status": "delivered"})
     client.post("/api/studio/workflows/team-learning/run", json={"urls": ["https://example.com/queued"]})

@@ -54,7 +54,10 @@ def test_project_limit_failure_rolls_back_whole_workflow_batch(client, monkeypat
 def test_concurrent_rights_revocation_never_leaves_delivered_project(client, task):
     project = client.post("/api/studio/projects", json={"name": "并发验收"}).json()
     storage.replace_items(project["id"], [task["id"]])
-    db.update_task(task["id"], {"status": "completed"})
+    root = db.config.media_dir / task["id"]
+    root.mkdir()
+    (root / "source.mp4").write_bytes(b"completed media")
+    db.update_task(task["id"], {"status": "completed", "file_path": f"{task['id']}/source.mp4"})
     storage.set_rights(task["id"], RightsPatch(license="owned", verified=True))
     barrier = Barrier(2)
 
