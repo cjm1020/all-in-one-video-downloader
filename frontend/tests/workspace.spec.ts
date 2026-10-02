@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const source = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
+const source = process.env.TEST_MEDIA_URL || 'https://raw.githubusercontent.com/mdn/interactive-examples/main/live-examples/media/cc0-videos/flower.mp4'
 
 test('schedule and control a real queue entry through the workbench', async ({ page, request }) => {
   const errors: string[] = []

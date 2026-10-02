@@ -18,6 +18,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:8090")
     parser.add_argument("--token", default="")
+    parser.add_argument("--media-url", default=SOURCE, help="Public CC0 fixture source; original MDN URL by default")
     args = parser.parse_args()
     opener = build_opener(HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
@@ -42,7 +43,7 @@ def main():
         assert call("/status")["worker_online"], "Worker must be running"
         # Unique fractional start avoids collision with existing user clips.
         start = 0.6 + (int(uuid.uuid4().hex[:4], 16) % 1000) / 10000
-        outcome = call("/tasks", {"urls": [SOURCE], "preset": "commute", "clip_start": start, "clip_end": start + 1})
+        outcome = call("/tasks", {"urls": [args.media_url], "preset": "commute", "clip_start": start, "clip_end": start + 1})
         assert outcome["added"], "Task unexpectedly duplicates an existing clip"
         task_id = outcome["added"][0]["id"]
         deadline = time.monotonic() + 150
@@ -58,7 +59,7 @@ def main():
         project = call("/studio/projects", {"name": "CC0 真实交付验收", "notes": "验收结束自动清理。"})
         project_id = project["id"]
         call(f"/studio/projects/{project_id}/items", {"task_ids": [task_id]}, "PUT")
-        call(f"/studio/rights/{task_id}", {"license": "cc0", "evidence_url": SOURCE, "verified": True}, "PUT")
+        call(f"/studio/rights/{task_id}", {"license": "cc0", "evidence_url": args.media_url, "verified": True}, "PUT")
         assert call(f"/studio/projects/{project_id}")["checklist"]["ready"]
         call(f"/studio/projects/{project_id}", {"status": "delivered"}, "PATCH")
         payload = call(f"/studio/projects/{project_id}/package", raw=True)
@@ -71,7 +72,7 @@ def main():
             assert manifest["checklist"]["ready"] and manifest["project"]["status"] == "delivered"
             assert {"README.md", "rights.csv", "manifest.json"} <= set(archive.namelist())
         print(json.dumps({
-            "passed": True, "source": SOURCE, "clip_seconds": task["duration"],
+            "passed": True, "source": args.media_url, "clip_seconds": task["duration"],
             "media_bytes": len(original), "zip_bytes": len(payload), "sha256": entry["sha256"],
             "checks": ["real download", "FFmpeg clip", "file length", "rights gate", "delivery transition", "ZIP byte integrity", "manifest hash"],
         }, ensure_ascii=False))
