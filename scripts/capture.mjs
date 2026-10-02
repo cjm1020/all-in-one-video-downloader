@@ -16,7 +16,7 @@ try {
   const base = process.env.BASE_URL || 'http://localhost:8090'
   await page.goto(base, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => document.querySelector('.download-submit') && !document.querySelector('.download-submit').disabled)
-  for (const name of ['home', 'queue', 'library', 'learning', 'settings']) {
+  for (const name of ['home', 'queue', 'library', 'learning', 'studio', 'insights', 'settings']) {
     await page.goto(`${base}/#${name}`, { waitUntil: 'domcontentloaded' })
     await page.locator(name === 'home' ? '.hero-panel' : '.page-heading').waitFor()
     if (name === 'learning') {
@@ -32,6 +32,9 @@ try {
   await page.goto(`${base}/#home`, { waitUntil: 'domcontentloaded' })
   await page.locator('.hero-panel').waitFor()
   await page.screenshot({ path: path.join(root, 'mobile.png'), fullPage: true })
+  await page.goto(`${base}/#studio`, { waitUntil: 'domcontentloaded' })
+  await page.locator('.page-heading').waitFor()
+  await page.screenshot({ path: path.join(root, 'mobile-studio.png'), fullPage: true })
   console.log(`Screenshots saved to ${root}`)
 } finally {
   await browser.close()
