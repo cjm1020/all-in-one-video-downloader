@@ -58,11 +58,11 @@ def main():
         task_id = task["id"]
         limit = db.get_settings()["storage_limit_gb"] * 1024**3
         if storage_bytes() >= limit or shutil.disk_usage(config.data_dir).free < 100 * 1024**2:
-            db.update_task(task_id, {"status": "failed", "error": "存储空间不足，请清理媒体或调整存储限额"},
-                           ("downloading",))
+            db.update_task(
+                task_id, {"status": "failed", "error": "存储空间不足，请清理媒体或调整存储限额"}, ("downloading",)
+            )
             continue
-        process = subprocess.Popen([sys.executable, "-m", "app.download", task_id],
-                                   start_new_session=os.name != "nt")
+        process = subprocess.Popen([sys.executable, "-m", "app.download", task_id], start_new_session=os.name != "nt")
         started = time.monotonic()
         try:
             while process.poll() is None:
@@ -75,23 +75,33 @@ def main():
                 limit = db.get_settings()["storage_limit_gb"] * 1024**3
                 if storage_bytes() > limit or shutil.disk_usage(config.data_dir).free < 50 * 1024**2:
                     terminate(process)
-                    db.update_task(task_id, {"status": "failed", "error": "已达到存储限额，下载已停止", "speed": 0},
-                                   ("downloading", "processing"))
+                    db.update_task(
+                        task_id,
+                        {"status": "failed", "error": "已达到存储限额，下载已停止", "speed": 0},
+                        ("downloading", "processing"),
+                    )
                     break
                 if time.monotonic() - started > 5400:
                     terminate(process)
-                    db.update_task(task_id, {"status": "failed", "error": "任务超过 90 分钟，请重试或缩短下载内容", "speed": 0},
-                                   ("downloading", "processing"))
+                    db.update_task(
+                        task_id,
+                        {"status": "failed", "error": "任务超过 90 分钟，请重试或缩短下载内容", "speed": 0},
+                        ("downloading", "processing"),
+                    )
                     break
                 time.sleep(1)
         finally:
             terminate(process)
             if stopping:
-                db.update_task(task_id, {"status": "queued", "speed": 0, "lease_at": None},
-                               ("downloading", "processing"))
+                db.update_task(
+                    task_id, {"status": "queued", "speed": 0, "lease_at": None}, ("downloading", "processing")
+                )
             else:
-                db.update_task(task_id, {"status": "failed", "speed": 0, "error": "下载进程意外退出，请重试"},
-                               ("downloading", "processing"))
+                db.update_task(
+                    task_id,
+                    {"status": "failed", "speed": 0, "error": "下载进程意外退出，请重试"},
+                    ("downloading", "processing"),
+                )
     db.set_settings({"worker_heartbeat": None})
 
 

@@ -4,7 +4,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 def public_ip(address: str) -> bool:
-    ip = ipaddress.ip_address(address.split('%')[0])
+    ip = ipaddress.ip_address(address.split("%")[0])
     if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
         ip = ip.ipv4_mapped
     return ip.is_global
@@ -12,7 +12,7 @@ def public_ip(address: str) -> bool:
 
 def normalize_url(url: str) -> str:
     url = url.strip()
-    if any(ord(c) < 32 for c in url) or '\\' in url:
+    if any(ord(c) < 32 for c in url) or "\\" in url:
         raise ValueError("链接包含无效字符")
     parsed = urlsplit(url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
@@ -21,7 +21,7 @@ def normalize_url(url: str) -> str:
         raise ValueError("链接不能包含用户名或密码")
     if parsed.port not in {None, 80, 443}:
         raise ValueError("只支持标准 HTTP(S) 端口")
-    host = parsed.hostname.rstrip('.').lower()
+    host = parsed.hostname.rstrip(".").lower()
     if host in {"localhost", "metadata.google.internal"} or host.endswith((".localhost", ".local", ".internal")):
         raise ValueError("不支持本机、内网或云元数据地址")
     try:
@@ -30,15 +30,16 @@ def normalize_url(url: str) -> str:
     except ValueError as exc:
         if "不支持" in str(exc):
             raise
-    return urlunsplit((parsed.scheme, parsed.netloc.lower(), parsed.path or '/', parsed.query, ''))
+    return urlunsplit((parsed.scheme, parsed.netloc.lower(), parsed.path or "/", parsed.query, ""))
 
 
 def validate_public_url(url: str) -> str:
     normalized = normalize_url(url)
     parsed = urlsplit(normalized)
     try:
-        results = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == 'https' else 80),
-                                     type=socket.SOCK_STREAM)
+        results = socket.getaddrinfo(
+            parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM
+        )
     except socket.gaierror as exc:
         raise ValueError("无法解析该域名，请检查链接或网络") from exc
     if not results or any(not public_ip(r[4][0]) for r in results):
@@ -61,4 +62,3 @@ def install_network_guard():
         return results
 
     socket.getaddrinfo = guarded
-

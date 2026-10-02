@@ -74,4 +74,3 @@ class SettingsUpdate(BaseModel):
     default_preset: Preset = "everyday"
     rate_limit: int = Field(0, ge=0, le=100000)
     storage_limit_gb: float = Field(10, ge=0.1, le=10000)
-

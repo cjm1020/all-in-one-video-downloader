@@ -33,13 +33,17 @@ def safe_media_path(task: dict) -> Path:
 @router.get("/collections")
 def collections():
     with db.connection() as conn:
-        return [dict(r) for r in conn.execute("""SELECT c.*, COUNT(t.id) AS count FROM collections c
-            LEFT JOIN tasks t ON t.collection_id=c.id GROUP BY c.id ORDER BY c.created_at""")]
+        return [
+            dict(r)
+            for r in conn.execute("""SELECT c.*, COUNT(t.id) AS count FROM collections c
+            LEFT JOIN tasks t ON t.collection_id=c.id GROUP BY c.id ORDER BY c.created_at""")
+        ]
 
 
 @router.post("/collections", status_code=201)
 def create_collection(data: CollectionCreate):
     import sqlite3
+
     collection_id = str(uuid.uuid4())
     name = data.name.strip()
     if not name:
@@ -57,8 +61,9 @@ def delete_collection(collection_id: str):
     if collection_id == "inbox":
         raise HTTPException(400, "默认合集不能删除")
     with db.connection() as conn:
-        conn.execute("UPDATE tasks SET collection_id='inbox',updated_at=? WHERE collection_id=?",
-                     (db.now(), collection_id))
+        conn.execute(
+            "UPDATE tasks SET collection_id='inbox',updated_at=? WHERE collection_id=?", (db.now(), collection_id)
+        )
         if not conn.execute("DELETE FROM collections WHERE id=?", (collection_id,)).rowcount:
             raise HTTPException(404, "合集不存在")
     return {"ok": True}
@@ -81,8 +86,9 @@ def edit_task(task_id: str, data: TaskPatch):
 def delete_task(task_id: str):
     require_task(task_id)
     with db.connection() as conn:
-        deleted = conn.execute("DELETE FROM tasks WHERE id=? AND status NOT IN ('downloading','processing')",
-                               (task_id,)).rowcount
+        deleted = conn.execute(
+            "DELETE FROM tasks WHERE id=? AND status NOT IN ('downloading','processing')", (task_id,)
+        ).rowcount
         if not deleted:
             raise HTTPException(409, "请先暂停或取消正在执行的任务，稍后再删除")
     directory = (config.media_dir / task_id).resolve()
@@ -95,7 +101,7 @@ def delete_task(task_id: str):
 def media_file(task_id: str, download: bool = False):
     task = require_task(task_id, raw=True)
     path = safe_media_path(task)
-    filename = (task["title"] or "video").replace('/', '_').replace('\\', '_')[:100] + path.suffix
+    filename = (task["title"] or "video").replace("/", "_").replace("\\", "_")[:100] + path.suffix
     return FileResponse(path, filename=filename, content_disposition_type="attachment" if download else "inline")
 
 
@@ -109,13 +115,18 @@ def export_task(task_id: str, format: str = "markdown"):
             raise HTTPException(409, "还没有字幕，请先导入")
         body, media_type, suffix = task["transcript"], "text/plain", "txt"
     elif format == "markdown":
-        body = (f"# {task['title'] or '视频资料卡'}\n\n"
-                f"来源：{task['url']}\n\n标签：{', '.join(task['tags']) or '无'}\n\n"
-                f"## 摘要\n\n{task['summary'] or '尚未生成'}\n\n"
-                f"## 我的笔记\n\n{task['notes'] or '尚未记录'}\n\n"
-                f"## 字幕\n\n{task['transcript'] or '尚未导入'}\n")
+        body = (
+            f"# {task['title'] or '视频资料卡'}\n\n"
+            f"来源：{task['url']}\n\n标签：{', '.join(task['tags']) or '无'}\n\n"
+            f"## 摘要\n\n{task['summary'] or '尚未生成'}\n\n"
+            f"## 我的笔记\n\n{task['notes'] or '尚未记录'}\n\n"
+            f"## 字幕\n\n{task['transcript'] or '尚未导入'}\n"
+        )
         media_type, suffix = "text/markdown", "md"
     else:
         raise HTTPException(400, "不支持的导出格式")
-    return Response(body, media_type=media_type, headers={
-        "Content-Disposition": f'attachment; filename="video-{task_id[:8]}.{suffix}"'})
+    return Response(
+        body,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="video-{task_id[:8]}.{suffix}"'},
+    )

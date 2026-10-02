@@ -1,7 +1,6 @@
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 from . import db
 from .config import config
@@ -30,21 +29,32 @@ def run_download(task_id: str):
         if event["status"] == "downloading" and time.monotonic() - last_update > 0.4:
             total = event.get("total_bytes") or event.get("total_bytes_estimate") or 0
             percent = min(95, event.get("downloaded_bytes", 0) / total * 95) if total else 0
-            db.update_task(task_id, {"progress": percent, "speed": event.get("speed") or 0,
-                                    "eta": event.get("eta") or 0}, ("downloading",))
+            db.update_task(
+                task_id,
+                {"progress": percent, "speed": event.get("speed") or 0, "eta": event.get("eta") or 0},
+                ("downloading",),
+            )
             last_update = time.monotonic()
 
     def processing(event):
         if event["status"] == "started":
-            db.update_task(task_id, {"status": "processing", "progress": 96, "speed": 0},
-                           ("downloading", "processing"))
+            db.update_task(task_id, {"status": "processing", "progress": 96, "speed": 0}, ("downloading", "processing"))
 
-    options = {**base_options(), "format": PRESETS[task["preset"]],
-               "outtmpl": str(directory / "source.%(ext)s"), "merge_output_format": "mp4",
-               "continuedl": True, "overwrites": False, "progress_hooks": [progress],
-               "postprocessor_hooks": [processing], "writesubtitles": True,
-               "writeautomaticsub": True, "subtitleslangs": ["en", "zh-Hans", "zh-Hant", "zh", "en-orig"],
-               "subtitlesformat": "vtt/best", "max_filesize": int(db.get_settings()["storage_limit_gb"] * 1024**3)}
+    options = {
+        **base_options(),
+        "format": PRESETS[task["preset"]],
+        "outtmpl": str(directory / "source.%(ext)s"),
+        "merge_output_format": "mp4",
+        "continuedl": True,
+        "overwrites": False,
+        "progress_hooks": [progress],
+        "postprocessor_hooks": [processing],
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitleslangs": ["en", "zh-Hans", "zh-Hant", "zh", "en-orig"],
+        "subtitlesformat": "vtt/best",
+        "max_filesize": int(db.get_settings()["storage_limit_gb"] * 1024**3),
+    }
     if task["rate_limit"]:
         options["ratelimit"] = task["rate_limit"] * 1024
     if task["preset"] == "audio":
@@ -68,14 +78,29 @@ def run_download(task_id: str):
         raise ValueError("下载未生成可播放的文件；请检查来源和存储空间")
     output = max(files, key=lambda p: p.stat().st_size)
     if task["clip_end"] is not None:
-        db.update_task(task_id, {"status": "processing", "progress": 97, "speed": 0},
-                       ("downloading", "processing"))
+        db.update_task(task_id, {"status": "processing", "progress": 97, "speed": 0}, ("downloading", "processing"))
         audio = task["preset"] == "audio"
         clipped = directory / ("clip.mp3" if audio else "clip.mp4")
-        command = ["ffmpeg", "-nostdin", "-y", "-v", "error", "-protocol_whitelist", "file,pipe",
-                   "-ss", str(task["clip_start"]), "-i", str(output),
-                   "-t", str(task["clip_end"] - task["clip_start"])]
-        command += ["-vn", "-c:a", "libmp3lame"] if audio else ["-c:v", "libx264", "-preset", "fast", "-c:a", "aac", "-movflags", "+faststart"]
+        command = [
+            "ffmpeg",
+            "-nostdin",
+            "-y",
+            "-v",
+            "error",
+            "-protocol_whitelist",
+            "file,pipe",
+            "-ss",
+            str(task["clip_start"]),
+            "-i",
+            str(output),
+            "-t",
+            str(task["clip_end"] - task["clip_start"]),
+        ]
+        command += (
+            ["-vn", "-c:a", "libmp3lame"]
+            if audio
+            else ["-c:v", "libx264", "-preset", "fast", "-c:a", "aac", "-movflags", "+faststart"]
+        )
         command += [str(clipped)]
         subprocess.run(command, check=True, capture_output=True, timeout=600)
         output.unlink()
@@ -84,11 +109,22 @@ def run_download(task_id: str):
     transcript = ""
     if captions:
         from .learning import clean_transcript
+
         transcript = clean_transcript(captions[0].read_text(encoding="utf-8", errors="replace")[:250000])
-    db.update_task(task_id, {"status": "completed", "progress": 100, "speed": 0, "eta": 0,
-                            "file_path": str(output.relative_to(config.media_dir)),
-                            "file_size": output.stat().st_size, "transcript": transcript, "error": ""},
-                   ("downloading", "processing"))
+    db.update_task(
+        task_id,
+        {
+            "status": "completed",
+            "progress": 100,
+            "speed": 0,
+            "eta": 0,
+            "file_path": str(output.relative_to(config.media_dir)),
+            "file_size": output.stat().st_size,
+            "transcript": transcript,
+            "error": "",
+        },
+        ("downloading", "processing"),
+    )
 
 
 if __name__ == "__main__":
@@ -96,7 +132,10 @@ if __name__ == "__main__":
         install_network_guard()
         run_download(sys.argv[1])
     except Exception as exc:
-        db.update_task(sys.argv[1], {"status": "failed", "error": str(exc)[-1200:], "speed": 0, "eta": 0},
-                       ("downloading", "processing"))
+        db.update_task(
+            sys.argv[1],
+            {"status": "failed", "error": str(exc)[-1200:], "speed": 0, "eta": 0},
+            ("downloading", "processing"),
+        )
         print(str(exc), file=sys.stderr)
         sys.exit(1)

@@ -74,8 +74,9 @@ def login(data: SessionRequest, request: Request):
         raise HTTPException(401, "访问口令不正确")
     response = JSONResponse({"authenticated": True})
     secure = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
-    response.set_cookie("aio_session", session_signature(), httponly=True, secure=secure,
-                        samesite="strict", max_age=604800, path="/api")
+    response.set_cookie(
+        "aio_session", session_signature(), httponly=True, secure=secure, samesite="strict", max_age=604800, path="/api"
+    )
     return response
 
 
@@ -92,9 +93,9 @@ async def inspect_video(data: InspectRequest):
         raise HTTPException(429, "解析任务较多，请稍后重试")
     async with inspect_slots:
         url = await run_in_threadpool(validate_public_url, data.url)
-        process = await asyncio.create_subprocess_exec(sys.executable, "-m", "app.inspect", url,
-                                                       stdout=asyncio.subprocess.PIPE,
-                                                       stderr=asyncio.subprocess.PIPE)
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "app.inspect", url, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=50)
         except (TimeoutError, asyncio.CancelledError):
@@ -167,8 +168,12 @@ async def events(request: Request):
             else:
                 yield ": heartbeat\n\n"
             await asyncio.sleep(1.5)
-    return StreamingResponse(stream(), media_type="text/event-stream", headers={
-        "Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
+    )
 
 
 from .library import router as library_router  # noqa: E402

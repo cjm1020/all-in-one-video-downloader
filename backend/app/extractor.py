@@ -26,10 +26,17 @@ class SafeYoutubeDL(YoutubeDL):
 
 def base_options() -> dict:
     options = {
-        "quiet": True, "no_warnings": True, "logger": QuietLogger(),
-        "noplaylist": True, "socket_timeout": 20, "retries": 2,
-        "extractor_retries": 2, "cachedir": False, "proxy": "",
-        "enable_file_urls": False, "hls_prefer_native": True,
+        "quiet": True,
+        "no_warnings": True,
+        "logger": QuietLogger(),
+        "noplaylist": True,
+        "socket_timeout": 20,
+        "retries": 2,
+        "extractor_retries": 2,
+        "cachedir": False,
+        "proxy": "",
+        "enable_file_urls": False,
+        "hls_prefer_native": True,
         "external_downloader": {"default": "native"},
     }
     if config.cookie_file:
@@ -58,8 +65,10 @@ def inspect(url: str) -> dict:
         if not info or info.get("_type") in {"playlist", "multi_video"}:
             raise ValueError("请使用单个视频链接；批量下载可粘贴多行链接")
         formats = info.get("formats") or []
-        return {**metadata(info), "uploader": info.get("uploader") or "",
-                "heights": sorted({int(f["height"]) for f in formats if f.get("height")}),
-                "has_subtitles": bool(info.get("subtitles") or info.get("automatic_captions")),
-                "webpage_url": info.get("webpage_url") or url}
-
+        return {
+            **metadata(info),
+            "uploader": info.get("uploader") or "",
+            "heights": sorted({int(f["height"]) for f in formats if f.get("height")}),
+            "has_subtitles": bool(info.get("subtitles") or info.get("automatic_captions")),
+            "webpage_url": info.get("webpage_url") or url,
+        }
