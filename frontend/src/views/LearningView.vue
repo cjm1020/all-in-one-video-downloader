@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import EmptyState from '../components/EmptyState.vue'
 import Icon from '../components/Icon.vue'
 import KnowledgeSearch from '../components/KnowledgeSearch.vue'
+import TaskMarkers from '../components/TaskMarkers.vue'
 import { api, duration, message, navigate, notify, refresh, store } from '../store'
 import type { TaskDetail } from '../types'
 
@@ -245,6 +246,7 @@ onMounted(() => {
               : '这个视频没有自动获取到字幕，可以导入 SRT、VTT 或 TXT；没有字幕时不会生成摘要。'
           "
         />
+        <TaskMarkers :task="detail" :position="selectedPosition" />
         <div v-if="detail.notes" class="learning-notes">
           <h3>
             <Icon name="file" :size="15" />
