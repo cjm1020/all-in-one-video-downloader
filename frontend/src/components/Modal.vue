@@ -33,16 +33,18 @@ function keys(event: KeyboardEvent) {
 }
 onMounted(() => {
   document.body.style.overflow = 'hidden'
+  document.addEventListener('keydown', keys, true)
   focusable()[0]?.focus()
 })
 onUnmounted(() => {
+  document.removeEventListener('keydown', keys, true)
   document.body.style.overflow = previousOverflow
   previousFocus?.focus()
 })
 </script>
 <template>
   <Teleport to="body">
-    <div class="modal-overlay" @click.self="emit('close')" @keydown="keys">
+    <div class="modal-overlay" @click.self="emit('close')">
       <section ref="panel" class="modal" role="dialog" aria-modal="true" :aria-label="title">
         <header class="modal-header">
           <h2>{{ title }}</h2>

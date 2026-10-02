@@ -117,9 +117,9 @@ async function submit() {
   }
 }
 function demo() {
-  url.value = 'https://download.blender.org/peach/trailer/trailer_480p.mp4'
+  url.value = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
   mode.value = 'single'
-  notify('已填入 Blender 公开授权演示片，点击开始收藏即可下载')
+  notify('已填入 MDN CC0 公开授权演示片，点击开始收藏即可下载')
 }
 const recent = computed(() => store.tasks.slice(0, 3))
 </script>
@@ -330,11 +330,18 @@ const recent = computed(() => store.tasks.slice(0, 3))
       <div class="form-row">
         <label>
           灵感剪辑 · 开始秒数
-          <input v-model="clipStart" type="number" min="0" max="86400" placeholder="留空则收藏完整视频" />
+          <input
+            v-model="clipStart"
+            type="number"
+            min="0"
+            max="86400"
+            step="0.01"
+            placeholder="留空则收藏完整视频"
+          />
         </label>
         <label>
           结束秒数
-          <input v-model="clipEnd" type="number" min="1" max="86400" placeholder="例如 30" />
+          <input v-model="clipEnd" type="number" min="0.01" max="86400" step="0.01" placeholder="例如 30" />
         </label>
       </div>
       <p class="muted">片段会在完整视频下载后精确剪辑；时间基于原始视频。预约时间使用你的本地时区。</p>

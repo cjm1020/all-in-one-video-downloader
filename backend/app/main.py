@@ -4,6 +4,7 @@ import hmac
 import json
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
@@ -138,7 +139,7 @@ def task_detail(task_id: str):
 
 @app.post("/api/tasks/{task_id}/actions/{action}")
 def task_action(task_id: str, action: str):
-    require_task(task_id)
+    task = require_task(task_id, raw=True)
     actions = {
         "pause": (("queued", "downloading", "processing"), "paused"),
         "resume": (("paused",), "queued"),
@@ -149,6 +150,10 @@ def task_action(task_id: str, action: str):
         raise HTTPException(404, "未知操作")
     allowed, target = actions[action]
     values = {"status": target, "speed": 0, "eta": 0, "error": ""}
+    if action in {"resume", "retry"} and task["lease_at"]:
+        if (datetime.now(timezone.utc) - datetime.fromisoformat(task["lease_at"])).total_seconds() < 30:
+            raise HTTPException(409, "正在停止前一个下载进程，请稍后再继续")
+        values["lease_at"] = None
     if action == "retry":
         values.update(progress=0, scheduled_at=None)
     if not db.update_task(task_id, values, allowed):

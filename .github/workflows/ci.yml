@@ -36,4 +36,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config -q
-      - run: docker compose build
+      - run: docker compose up --build -d --wait
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
+        working-directory: frontend
+      - run: docker compose logs --tail=100
+        if: failure()
+      - run: docker compose down
+        if: always()

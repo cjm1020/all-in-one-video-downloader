@@ -57,3 +57,14 @@ def test_connection_guard_checks_redirect_hosts(monkeypatch):
 def test_mapped_ipv6_private():
     assert not public_ip("::ffff:10.1.1.1")
     assert public_ip("1.1.1.1")
+
+
+def test_mounted_cookies_are_never_rewritten(tmp_path):
+    from app.extractor import SafeYoutubeDL, base_options
+
+    cookie = tmp_path / "cookies.txt"
+    original = "# Netscape HTTP Cookie File\n.example.com\tTRUE\t/\tFALSE\t0\tsession\ttest\n"
+    cookie.write_text(original)
+    with SafeYoutubeDL({**base_options(), "cookiefile": str(cookie)}) as engine:
+        assert list(engine.cookiejar)[0].name == "session"
+    assert cookie.read_text() == original

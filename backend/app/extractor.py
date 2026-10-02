@@ -18,6 +18,10 @@ class QuietLogger:
 
 
 class SafeYoutubeDL(YoutubeDL):
+    def save_cookies(self):
+        # Mounted Netscape cookies are credentials: read them but never rewrite them.
+        pass
+
     def urlopen(self, req):
         url = req if isinstance(req, str) else (getattr(req, "url", None) or req.get_full_url())
         normalize_url(url)
@@ -38,6 +42,7 @@ def base_options() -> dict:
         "enable_file_urls": False,
         "hls_prefer_native": True,
         "external_downloader": {"default": "native"},
+        "js_runtimes": {"node": {}},
     }
     if config.cookie_file:
         options["cookiefile"] = config.cookie_file

@@ -13,6 +13,7 @@
 | GET/PATCH/DELETE | /api/tasks/{id} | 详情 / 修改资料卡 / 删除及清理 |
 | POST | /api/tasks/{id}/actions/{action} | pause / resume / cancel / retry |
 | GET | /api/tasks/{id}/file | 播放，支持 Range；`?download=true` 保存 |
+| GET | /api/tasks/{id}/poster | 下载后生成的本地 JPEG 封面，要求认证 |
 | GET | /api/tasks/{id}/export | 默认 Markdown；`?format=json` 或 `transcript` |
 | GET/POST | /api/collections | 合集列表 / 创建 |
 | DELETE | /api/collections/{id} | 删除，内容移回 inbox |

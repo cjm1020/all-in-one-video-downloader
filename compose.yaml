@@ -6,6 +6,8 @@ x-backend: &backend
     context: ./backend
     args:
       PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+      DEBIAN_MIRROR: ${DEBIAN_MIRROR:-https://deb.debian.org}
+      NODE_RUNTIME_IMAGE: ${NODE_RUNTIME_IMAGE:-node:24-bookworm-slim}
   init: true
   restart: unless-stopped
   volumes:

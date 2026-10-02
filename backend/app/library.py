@@ -1,6 +1,7 @@
 import json
 import shutil
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -84,7 +85,12 @@ def edit_task(task_id: str, data: TaskPatch):
 
 @router.delete("/tasks/{task_id}")
 def delete_task(task_id: str):
-    require_task(task_id)
+    task = require_task(task_id, raw=True)
+    if (
+        task["lease_at"]
+        and (datetime.now(timezone.utc) - datetime.fromisoformat(task["lease_at"])).total_seconds() < 30
+    ):
+        raise HTTPException(409, "下载进程仍在清理，请稍后再删除")
     with db.connection() as conn:
         deleted = conn.execute(
             "DELETE FROM tasks WHERE id=? AND status NOT IN ('downloading','processing')", (task_id,)
@@ -103,6 +109,17 @@ def media_file(task_id: str, download: bool = False):
     path = safe_media_path(task)
     filename = (task["title"] or "video").replace("/", "_").replace("\\", "_")[:100] + path.suffix
     return FileResponse(path, filename=filename, content_disposition_type="attachment" if download else "inline")
+
+
+@router.get("/tasks/{task_id}/poster")
+def media_poster(task_id: str):
+    task = require_task(task_id, raw=True)
+    safe_media_path(task)
+    path = (config.media_dir / task_id / "poster.jpg").resolve()
+    root = (config.media_dir / task_id).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise HTTPException(404, "这个收藏没有本地封面")
+    return FileResponse(path, media_type="image/jpeg")
 
 
 @router.get("/tasks/{task_id}/export")

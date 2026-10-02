@@ -62,9 +62,10 @@ async function open(task: Task) {
 }
 async function save() {
   if (!current.value) return
+  const taskId = current.value.id
   saving.value = true
   try {
-    current.value = await api<TaskDetail>(`/tasks/${current.value.id}`, {
+    const saved = await api<TaskDetail>(`/tasks/${taskId}`, {
       method: 'PATCH',
       body: JSON.stringify({
         title: title.value,
@@ -73,6 +74,7 @@ async function save() {
         collection_id: collection.value,
       }),
     })
+    if (current.value?.id === taskId) current.value = saved
     await refresh()
     notify('资料卡已保存，灵感也留下了')
   } catch (e) {

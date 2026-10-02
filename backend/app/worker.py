@@ -102,6 +102,7 @@ def main():
                     {"status": "failed", "speed": 0, "error": "下载进程意外退出，请重试"},
                     ("downloading", "processing"),
                 )
+            db.update_task(task_id, {"lease_at": None})
     db.set_settings({"worker_heartbeat": None})
 
 

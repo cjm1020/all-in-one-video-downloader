@@ -31,7 +31,9 @@ Windows PowerShell 用 `Copy-Item .env.example .env`。Compose 会自动创建�
 | COOKIE_FILE | 空 | 授权会话的 Netscape Cookie 文件容器路径，如 `/cookies/authorized.txt` |
 | PYTHON_IMAGE | python:3.11-slim | 后端基础镜像 |
 | NODE_IMAGE | node:24-alpine | 前端构建基础镜像 |
+| NODE_RUNTIME_IMAGE | node:24-bookworm-slim | 下载引擎的 Node 24 运行时 |
 | NGINX_IMAGE | nginx:1.28-alpine | 网页运行镜像 |
+| DEBIAN_MIRROR | https://deb.debian.org | Debian 包源基址，可替换为可信镜像 |
 
 `.env`、Cookie 和本地下载文件均被 Git 忽略。设置 Cookie 后，应放入 `cookies/authorized.txt`；只读挂载保护原始会话文件。不能通过页面输入任意下载器命令、FFmpeg 命令或 Cookie 文本。
 
@@ -42,10 +44,13 @@ Windows PowerShell 用 `Copy-Item .env.example .env`。Compose 会自动创建�
 ```dotenv
 PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.11-slim
 NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine
+NODE_RUNTIME_IMAGE=public.ecr.aws/docker/library/node:24-bookworm-slim
 NGINX_IMAGE=public.ecr.aws/docker/library/nginx:1.28-alpine
 ```
 
 然后正常运行 `docker compose up --build -d`。项目 Dockerfile 缓存 Debian 包并对临时下载失败重试，首次安装 FFmpeg 可能需要数分钟。
+
+后端镜像还包含 Node 24 和 yt-dlp-ejs，供 yt-dlp 的 JavaScript 解析使用；Debian 默认的 Node 20 不满足当前引擎要求，因此从单独的官方镜像复制运行时。依赖版本固定在 `backend/requirements.txt` 与 `frontend/package-lock.json`。
 
 ## 验证
 
@@ -60,6 +65,8 @@ python scripts/smoke.py
 ```
 
 该脚本向本机服务添加一个短视频，验证解析、下载、文件 Range、字幕和资料卡，默认结束后删除它创建的任务；设 `KEEP_SMOKE_MEDIA=1` 可保留。如配置了口令，设置 `SMOKE_TOKEN`，避免将口令放进命令行参数。
+
+进一步验证脚本：`scripts/verify_resume.py` 检查限速和下载中的暂停恢复；`scripts/verify_platform.py` 下载官方 Blender CC BY 短片以验证分离音视频合并；`scripts/verify_live.py` 生成两条真实 CC0 演示素材并重启当前项目的三个容器，核对媒体与笔记持久化。后两个操作包含实际下载，运行前确保当前没有需要保留运行状态的任务。
 
 ## 更新与备份
 

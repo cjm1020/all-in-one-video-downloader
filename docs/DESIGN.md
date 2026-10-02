@@ -34,7 +34,7 @@ Docker 服务：`web`（Nginx，只公开本机 8090）；`api`（FastAPI，内�
 - `collections`：UUID、名称、配色；默认“我的收藏”。
 - `settings`：默认预设、速率上限、存储软限额。环境变量仅管理基础设施和密钥。
 - `GET /api/health`、`GET /api/status`、`GET/PUT /api/settings`。
-- `POST /api/inspect`、`GET/POST /api/tasks`、`POST /api/tasks/{id}/{action}`。
+- `POST /api/inspect`、`GET/POST /api/tasks`、`POST /api/tasks/{id}/actions/{action}`。
 - `GET/PATCH/DELETE /api/tasks/{id}`、`GET /api/tasks/{id}/file`、`GET /api/tasks/{id}/export`。
 - `GET/POST/DELETE /api/collections`、`POST /api/tasks/{id}/transcript`、`POST /api/tasks/{id}/summary`、`GET /api/events`。
 

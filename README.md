@@ -4,6 +4,10 @@
 
 Vue 3 + TypeScript · FastAPI + SQLite · yt-dlp + FFmpeg · 三服务 Docker Compose
 
+![柔和的下载工作台](docs/screenshots/home.png)
+
+界面实拍：[媒体收藏](docs/screenshots/library.png) · [学习花园](docs/screenshots/learning.png) · [偏好设置](docs/screenshots/settings.png) · [移动端](docs/screenshots/mobile.png)。截图中的两条内容是本机实际下载的 CC0 演示片段；新部署仍从空库开始。
+
 ## 先设计，再实现
 
 第 1 条 Git 提交包含完整[项目方案](docs/DESIGN.md)与[课程学习 / 小众项目调研](docs/RESEARCH.md)，随后按功能逐步实现。最终交付包含 **20 条有实际文件变化的提交**。
@@ -62,7 +66,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 python -m app.worker
 
 # 前端：Node 22.12+（建议 Node 24）
-cd frontend
+cd ../frontend
 npm ci
 npm run dev
 ```
@@ -77,6 +81,8 @@ cd ../frontend
 npm run build
 npm run test:e2e                      # 需要正在运行的 Docker 服务与浏览器
 ```
+
+首次运行浏览器测试可在 `frontend` 执行 `npx playwright install chromium`；Windows 也可设置 `PLAYWRIGHT_EXECUTABLE_PATH` 指向已安装的 Edge/Chrome。完整 Docker 启动和浏览器检查已接入 GitHub Actions。
 
 仅下载自己拥有版权、已获授权或公开授权的素材，不支持绕过 DRM。AI 模式会将选中视频的字幕发送给 DeepSeek。本项目适合单机、可信单用户部署，SQLite 单 Worker 架构不面向大规模公共下载服务。
 

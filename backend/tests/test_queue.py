@@ -66,6 +66,16 @@ def test_completed_task_cannot_retry(client, task):
     assert client.post(f"/api/tasks/{task['id']}/actions/retry").status_code == 409
 
 
+def test_stop_lease_blocks_resume_and_delete_until_worker_exits(client, task):
+    db.claim_task()
+    path = f"/api/tasks/{task['id']}"
+    assert client.post(path + "/actions/pause").status_code == 200
+    assert client.post(path + "/actions/resume").status_code == 409
+    assert client.delete(path).status_code == 409
+    db.update_task(task["id"], {"lease_at": None})
+    assert client.post(path + "/actions/resume").status_code == 200
+
+
 def test_invalid_request_is_not_queued(client):
     for data in [
         {"urls": ["http://127.0.0.1/x"]},

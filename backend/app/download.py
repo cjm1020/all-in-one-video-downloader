@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import time
@@ -77,6 +78,26 @@ def run_download(task_id: str):
     if not files:
         raise ValueError("下载未生成可播放的文件；请检查来源和存储空间")
     output = max(files, key=lambda p: p.stat().st_size)
+    probe = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-protocol_whitelist",
+            "file,pipe",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "json",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+    source_duration = float(json.loads(probe.stdout).get("format", {}).get("duration") or 0)
+    if task["clip_end"] and source_duration and task["clip_end"] > source_duration + 0.05:
+        raise ValueError("片段结束时间超出了实际视频时长")
     if task["clip_end"] is not None:
         db.update_task(task_id, {"status": "processing", "progress": 97, "speed": 0}, ("downloading", "processing"))
         audio = task["preset"] == "audio"
@@ -105,6 +126,32 @@ def run_download(task_id: str):
         subprocess.run(command, check=True, capture_output=True, timeout=600)
         output.unlink()
         output = clipped
+    thumbnail = info.get("thumbnail") or ""
+    if task["preset"] != "audio":
+        poster = directory / "poster.jpg"
+        generated = subprocess.run(
+            [
+                "ffmpeg",
+                "-nostdin",
+                "-y",
+                "-v",
+                "error",
+                "-protocol_whitelist",
+                "file,pipe",
+                "-i",
+                str(output),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=640:-2",
+                str(poster),
+            ],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        if generated.returncode == 0 and poster.is_file():
+            thumbnail = f"/api/tasks/{task_id}/poster"
     captions = list(directory.glob("*.vtt")) + list(directory.glob("*.srt"))
     transcript = ""
     if captions:
@@ -120,6 +167,8 @@ def run_download(task_id: str):
             "eta": 0,
             "file_path": str(output.relative_to(config.media_dir)),
             "file_size": output.stat().st_size,
+            "duration": source_duration or info.get("duration") or 0,
+            "thumbnail": thumbnail,
             "transcript": transcript,
             "error": "",
         },

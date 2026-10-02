@@ -38,7 +38,7 @@ def test_range_delivery_and_safe_file(client, task):
 def test_delete_active_rejected_and_cleanup(client, task):
     db.claim_task()
     assert client.delete(f"/api/tasks/{task['id']}").status_code == 409
-    db.update_task(task["id"], {"status": "paused"})
+    db.update_task(task["id"], {"status": "paused", "lease_at": None})
     root = library.config.media_dir / task["id"]
     root.mkdir()
     (root / "source.part").write_text("partial")
