@@ -54,7 +54,10 @@
 git rev-list --count HEAD
 git log --date=iso-strict --format='%h %ad %s'
 git show --stat <commit>
+python scripts/audit_history.py --help
 ```
+
+仓库提供 `scripts/audit_history.py` 检查提交证据，实际选项以 `--help` 为准。审计只能检查文件变化与记录，不能验证工作年限、提交质量或 GitHub 热度。
 
 选择几个重要提交解释需求、风险和验证：例如授权门禁、ZIP 交付、字幕失效、状态竞态和评估规范。每条应有可审查文件变化和独立目的。
 

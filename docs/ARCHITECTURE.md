@@ -26,8 +26,8 @@ flowchart LR
 | 公网解析与访问 | `backend/app/security.py`、`extractor.py` | 拒绝本机/私网/保留地址、非 HTTP(S)、凭据和非标准端口；解析/下载进程在连接时再次检查地址 |
 | 持久队列 | `backend/app/db.py`、`worker.py` | 写事务领取任务，状态更新附带旧状态条件；API 不等待整个下载结束 |
 | 媒体文件 | `backend/app/library.py`、`download.py` | 内部文件路径不直接序列化给浏览器；文件服务检查路径与任务状态 |
-| 字幕与知识 | `backend/app/learning.py`、`knowledge_db.py` | 标明来源；字幕改变后处理派生卡片的失效；本地提取不声称是模型生成 |
-| 项目工作流 | Studio 模块与视图 | 项目资料、素材成员、授权记录、就绪检查和交付包各有明确责任；预算不等于交易 |
+| 字幕与知识 | `backend/app/learning.py`、`captions.py`、`knowledge.py`、`knowledge_db.py` | 标明来源；字幕改变后处理派生卡片的失效；本地提取不声称是模型生成 |
+| 项目工作流 | `backend/app/studio`、`frontend/src/views/StudioView.vue` | 项目资料、素材成员、授权记录、就绪检查和交付包各有明确责任；预算不等于交易 |
 
 Studio 与知识的最新路由及模型以 [API](API.md) 为准。数据库与媒体在同一持久卷，缓存和导出不应成为用户资料的唯一副本。
 
@@ -48,6 +48,8 @@ Studio 与知识的最新路由及模型以 [API](API.md) 为准。数据库与�
 - 用户预算以整数分保存，避免金额运算使用二进制浮点；分析面板标为预算，不能标为收入。
 
 这些不变量的测试证据见 [EVALUATION](EVALUATION.md) 与 [VERIFICATION](VERIFICATION.md)。
+
+字幕替换在同一写事务中更新原文、时间轴索引、摘要失效和自动卡片来源哈希。自动卡片的来源哈希与新原文不同时清理；用户手写卡片不依赖自动来源，保留不变。剪辑后的时间轴按片段起点重定位，媒体完成状态与字幕索引一起写入，避免完成标记与旧字幕混用。
 
 ## 数据演进与恢复
 

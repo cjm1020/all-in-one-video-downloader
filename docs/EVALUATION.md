@@ -80,4 +80,20 @@ unverified: []
 - [验收记录](VERIFICATION.md)：当前软件实测与明确限制；不要把旧版本测试数沿用到本轮提交。
 - `backend/tests` 与 `frontend/tests`：可运行的软件验收入口。模型独立评测需要额外按本文件建立运行记录。
 
+可直接定位的验收用例包括：
+
+| 能力/反例 | 测试文件与真实符号 | 证据范围 |
+| --- | --- | --- |
+| 项目客户、预算与时区日期 | `backend/tests/test_studio_projects.py::test_project_creation_persists_client_budget_and_deadline` | 隔离数据库中的 API 持久化 |
+| 项目成员替换原子性 | `backend/tests/test_studio_membership.py::test_membership_replacement_is_atomic_and_deduplicated` | 无效成员整体回滚与去重 |
+| 授权输入与证据 | `backend/tests/test_studio_rights.py::test_rights_reject_incomplete_or_unsafe_evidence` | 受约束的人工授权资料；不鉴定证据真伪 |
+| 字幕时间与查询文字 | `backend/tests/test_knowledge.py::test_caption_search_returns_real_timestamps_and_literal_query` | 测试字幕和字面查询，不是语义搜索 |
+| 自动卡片来源失效 | `backend/tests/test_knowledge.py::test_cards_require_source_deduplicate_and_invalidate_only_generated` | 自动卡片去重与失效，人工卡片保留 |
+| 复习时间规则 | `backend/tests/test_knowledge.py::test_schedule_is_deterministic` | 固定时间下三档调度，不证明学习效果 |
+| 剪辑时间轴与条件完成 | `backend/tests/test_knowledge.py::test_caption_clip_rebase_and_conditional_completion` | 字幕重定位和状态条件写入 |
+| 恢复与旧进程租约 | `backend/tests/test_queue.py::test_stop_lease_blocks_resume_and_delete_until_worker_exits` | API 状态冲突；真实子进程续传另看集成记录 |
+| 重定向出站边界 | `backend/tests/test_security.py::test_connection_guard_checks_redirect_hosts` | 受控解析反例，不攻击实际第三方 |
+
+符号存在不等于本轮已经运行通过。实际命令、版本、结果与新增交付/浏览器检查统一以验收报告为准。
+
 适合申报的证据是「有真实需求、能定义能力边界、实现能被复现、失败可以解释」。资格所需的工作经历或项目热度仍须由外部事实提供，见 [PORTFOLIO](PORTFOLIO.md)。
