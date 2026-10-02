@@ -1,0 +1,48 @@
+name: AI Coding 任务与评测
+description: 提出独立任务、保留变体或可复现的 AI Coding 评测记录。
+title: "[AI Task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        任务设计见 docs/TASK_CATALOG.md，统一证据规则见 docs/EVALUATION.md。
+        软件测试通过不等于独立模型评测通过；不要上传敏感完整对话或客户数据。
+  - type: dropdown
+    id: purpose
+    attributes:
+      label: 类型
+      options:
+        - 新任务设计
+        - 已有任务的保留变体
+        - 真实评测结果
+        - 评分规则或验收反例改进
+    validations:
+      required: true
+  - type: input
+    id: baseline
+    attributes:
+      label: 基线 commit 与任务版本
+      description: 记录被测模型实际看到的版本；新设计可写待确定。
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: 场景、输入、约束与输出
+      description: 说明业务需求，以及目标实现是否已在基线中，如何避免答案泄漏。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 独立验收与反例
+      description: 可复现的正常/边界/故障用例、评分依据与严重失败规则。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 实际运行证据或待验证部分
+      description: 实际模型与配置、工具预算、提示、输出 commit、命令/退出码、人工介入、未验证范围；未运行请明确写 not_run。
+    validations:
+      required: true

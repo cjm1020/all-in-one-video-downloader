@@ -1,0 +1,52 @@
+name: 工作流与商业价值建议
+description: 从真实用户任务提出可验证的功能，而非仅列按钮或技术名词。
+title: "[Workflow] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        当前产品服务可信单用户实例。请标明哪些事实来自实际工作，哪些仍是假设。
+        可参考 docs/BUSINESS.md、docs/ROADMAP.md 和 docs/TASK_CATALOG.md。
+  - type: textarea
+    id: user_job
+    attributes:
+      label: 谁在什么任务中遇到阻力
+      description: 说明任务频率、输入、希望交付的结果及授权范围。使用脱敏案例。
+    validations:
+      required: true
+  - type: textarea
+    id: alternative
+    attributes:
+      label: 现在怎样完成，有什么成本
+      description: 描述替代工具与手工步骤。时间、返工、价格没有实测时请标为假设。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的最小功能
+      description: 给出具体输入、输出、界面或 API 路径，以及为什么能解决上述任务。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 如何验收与失败边界
+      description: 正常流程、非法输入、资料丢失、授权缺项、并发或外部站点失效时应该怎样表现。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 商业或用户证据
+      description: 已有访谈/实际使用/付费信号请脱敏说明；没有则写待验证。预算、Stars 或下载量不等于收入。
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: 预期部署规模
+      options:
+        - 一位可信用户，本机或自有服务器
+        - 团队共享，需要新增身份与权限
+        - 公共服务，需要单独评估资源与滥用边界
+    validations:
+      required: true
