@@ -1,9 +1,10 @@
-from fastapi import APIRouter
-from fastapi.responses import Response
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response, StreamingResponse
+from starlette.background import BackgroundTask
 
 from .. import db
 from ..security import validate_public_url
-from . import exports, storage, workflows
+from . import exports, package, storage, workflows
 from .models import ItemReplace, ProjectCreate, ProjectPatch, RightsPatch, WorkflowCreate, WorkflowRun
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
@@ -78,3 +79,32 @@ def export_project(project_id: str, format: str = "json"):
     body, media_type, suffix = exports.export_project(project_id, format)
     return Response(body, media_type=media_type,
                     headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.{suffix}"'})
+
+
+@router.get("/projects/{project_id}/package")
+def delivery_package(project_id: str):
+    if not package.package_slots.acquire(blocking=False):
+        raise HTTPException(429, "当前交付包正在传输，请稍后重试")
+    try:
+        spool = package.build_package(project_id)
+    except Exception:
+        package.package_slots.release()
+        raise
+    closed = False
+
+    def cleanup():
+        nonlocal closed
+        if not closed:
+            closed = True
+            spool.close()
+            package.package_slots.release()
+
+    def stream():
+        try:
+            while chunk := spool.read(package.CHUNK_BYTES):
+                yield chunk
+        finally:
+            cleanup()
+
+    return StreamingResponse(stream(), media_type="application/zip", background=BackgroundTask(cleanup),
+                             headers={"Content-Disposition": f'attachment; filename="project-{project_id[:8]}.zip"'})
