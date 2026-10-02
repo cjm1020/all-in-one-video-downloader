@@ -1,5 +1,33 @@
 # 验收记录
 
+## 1.1.0 商业工作流验收 · 2026-10-03
+
+环境：Windows、Python 3.12.8 本地验证、Docker Linux Python 3.11 镜像、Node 24、Edge Chromium。以下是本轮实际运行结果，初版历史记录保留在后文。
+
+| 验证 | 实际结果 |
+| --- | --- |
+| 后端回归 | **99 passed**，含 39 项原测试、44 项 Studio 业务测试和 16 项字幕知识 / 升级测试；约 11 秒 |
+| 静态检查 | 后端 app/tests Ruff、三份新增验收脚本 Ruff、Git diff 空白检查通过 |
+| 前端发布构建 | `vue-tsc -b && vite build` 通过；Docker 内使用 1.1.0 包版本完成生产构建 |
+| 浏览器 | **8 passed**，最终约 23 秒：项目创建 / 授权 / 实际交付门禁、排队字幕学习 / 手写书签及卡片 / 到期复习、自定义配方去重及日志、经营估算和 390px 布局，加上四项原工作台回归 |
+| 商业 API 验收 | `scripts/verify_commercial.py` **6 项通过**：未完成交付拒绝、unknown 授权拒绝核验、字幕时间证据、卡片去重 / 提前复习拒绝、配方重复执行、清单及真实操作数据 |
+| 实际 CC0 交付 | `scripts/verify_delivery.py` 成功下载 MDN 官方 GitHub 原文件并剪成 1 秒；媒体 **96,426 bytes**，ZIP **99,453 bytes**；包内媒体与文件接口逐字节一致，SHA-256 与清单一致 |
+| 部署 | 最新 web / api / worker 全部 healthy，仍使用原持久卷；原有两份媒体可播放，新增表初始化正常 |
+| 旧片段升级 | 初版把完整源时长记在片段上；现有库初始化会修正片段时长，重复初始化仍保留素材和知识资料；回归已覆盖 |
+| 提交历史 | 从原来 20 条提交继续增加，全部为实际文件变更；`scripts/audit_history.py --minimum 51 --base 8ae5d90` 可复核当前数量、增量和空提交 |
+
+本轮独立审阅后修复：TXT / 字幕正文以 NOTE 开头和纯数字时被误删、多语言关键词搜索大小写规则不一致、缺失媒体仍能标记交付、排队字幕资料搜索后内容不可见，以及开发代理 Host 改写导致同源请求被拒绝。均有实际回归证据。
+
+真实下载首次访问 `interactive-examples.mdn.mozilla.net` 遇到 SSL EOF 和握手超时。未关闭 TLS 或地址保护；改用同一 MDN 官方仓库的 CC0 原文件后，真实下载、播放与打包成功。浏览器测试支持 `TEST_MEDIA_URL`，交付脚本支持 `--media-url`，让网络条件可复现。
+
+真实媒体 SHA-256：`47e1e83388e218ffc5c43c6b7702c57b7a2e9f07f47b31f070c94b45fce24f99`。验收创建的临时任务、项目及自定义配方均被清理；操作记录保留。该结果验证软件和文件交付，不证明真实付费客户、版权法律判断或模型任务评分。
+
+最新截图：[创作交付](screenshots/studio.png)、[经营洞察](screenshots/insights.png)、[移动端交付](screenshots/mobile-studio.png)。截图中的项目明确标记为演示，预算为 0，无真实客户或收入；素材使用已有真实 CC0 下载。演示资料仅在本机持久卷，仓库不包含数据库，新部署从空库开始。
+
+本轮未调用付费 DeepSeek、未评测其他模型，也未重复声称初版的平台解析结果全部在本轮复验。GitHub Actions 已补充商业 API、真实 ZIP 验收和失败截图上传；托管运行是否通过以 Actions 页面为准。第三方 AnyIO 弃用提示仍存在，不影响上述通过结果。
+
+## 初版历史验收 · 2026-10-02
+
 验证日期：2026-10-02（Asia/Shanghai）。运行环境：Windows + Docker Desktop Linux 容器，Python 3.11 后端镜像，Node 24 / Vue 3 前端，Edge Chromium 浏览器。
 
 ## 已通过

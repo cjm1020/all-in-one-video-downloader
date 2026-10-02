@@ -6,7 +6,7 @@ Vue 3 + TypeScript · FastAPI + SQLite · yt-dlp + FFmpeg · 三服务 Docker Co
 
 ![柔和的下载工作台](docs/screenshots/home.png)
 
-界面实拍：[媒体收藏](docs/screenshots/library.png) · [学习花园](docs/screenshots/learning.png) · [偏好设置](docs/screenshots/settings.png) · [移动端](docs/screenshots/mobile.png)。截图中的两条内容是本机实际下载的 CC0 演示片段；新部署仍从空库开始。
+界面实拍：[创作交付](docs/screenshots/studio.png) · [经营洞察](docs/screenshots/insights.png) · [媒体收藏](docs/screenshots/library.png) · [学习花园](docs/screenshots/learning.png) · [移动端交付](docs/screenshots/mobile-studio.png)。截图中的两条内容是本机实际下载的 CC0 演示片段，项目标明演示且预算为 0；新部署仍从空库开始。
 
 ## 先设计，再实现
 
