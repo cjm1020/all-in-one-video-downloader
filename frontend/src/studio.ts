@@ -26,13 +26,15 @@ export interface Rights {
   evidence_url: string
   verified: boolean
 }
-export interface ProjectItem extends Task { rights: Rights }
+export interface ProjectItem extends Task {
+  rights: Rights
+}
 export interface Checklist {
   total: number
   completed: number
   licensed: number
   ready: boolean
-  issues: { task_id: string; reason: string }[]
+  issues: { task_id: string | null; reason: string }[]
 }
 export interface ProjectDetail {
   project: Project
@@ -62,7 +64,11 @@ export interface Analytics {
   activity: { id: string; action: string; entity_id: string; created_at: string }[]
 }
 export function currency(cents: number) {
-  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 2 }).format(cents / 100)
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+    maximumFractionDigits: 2,
+  }).format(cents / 100)
 }
 export function localDate(value: string | null) {
   if (!value) return '未设置截止日期'
