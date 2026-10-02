@@ -12,6 +12,10 @@ const labor = computed(() => hours.value * Math.max(0, estimate.hourlyRate || 0)
 const storage = computed(() => (data.value?.storage_bytes || 0) / 1024 ** 3 * Math.max(0, estimate.storageCost || 0))
 const maxPlatform = computed(() => Math.max(1, ...(data.value?.platforms.map(p => p.count) || [])))
 const actions: Record<string, string> = {
+  'project.created': '创建项目', 'project.updated': '更新项目', 'project.deleted': '移除项目',
+  'project.items_updated': '更新素材清单', 'project.delivered': '完成交付', 'project.reopened': '重新打开项目',
+  'rights.updated': '更新授权记录', 'workflow.created': '创建工作流', 'workflow.deleted': '移除工作流',
+  'project.exported': '导出交付文档', 'project.packaged': '下载交付包',
   project_created: '创建项目', project_updated: '更新项目', project_deleted: '移除项目',
   project_delivered: '完成交付', project_reopened: '重新打开项目', project_items_updated: '更新素材清单',
   rights_updated: '更新授权记录', workflow_created: '创建工作流', workflow_deleted: '移除工作流', workflow_run: '运行工作流',

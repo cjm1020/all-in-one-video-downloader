@@ -55,6 +55,11 @@ svg {
 button {
   color: inherit;
 }
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
 button:focus-visible,
 a:focus-visible {
   outline: 3px solid #94b79b;
@@ -114,6 +119,7 @@ small {
   display: flex;
   flex-direction: column;
   z-index: 30;
+  overflow-y: auto;
 }
 .brand {
   display: flex;

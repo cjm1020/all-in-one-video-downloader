@@ -36,13 +36,13 @@ async function remove(card: Card) {
   finally { busy.value = '' }
 }
 function toggle(id: string) { shown.value = shown.value.includes(id) ? shown.value.filter(value => value !== id) : [...shown.value, id] }
-watch(() => props.task.id, () => { cards.value = []; shown.value = []; form.question = ''; form.answer = ''; error.value = ''; load() })
+watch(() => [props.task.id, props.task.transcript], () => { cards.value = []; shown.value = []; form.question = ''; form.answer = ''; error.value = ''; load() })
 onMounted(load)
 </script>
 <template>
   <section class="study-cards" aria-label="素材复习卡">
     <div class="panel-heading"><h3><Icon name="book" :size="16" />把观点，变成复习卡 <span class="section-caption">{{ cards.length }}</span></h3><button class="button small" :disabled="!!busy || !task.transcript" @click="generate"><Icon :name="busy === 'generate' ? 'loader' : 'leaf'" :size="13" :class="{ spinner: busy === 'generate' }" />本地提取填空卡</button></div><p class="hint">从字幕原句提取填空题，无需模型服务；也可以写下自己的问题与答案。</p>
-    <form class="card-form" @submit.prevent="create"><label>复习问题<input v-model="form.question" required maxlength="1000" placeholder="这个片段解决了什么问题？" /></label><label>参考答案<textarea v-model="form.answer" required maxlength="5000" rows="3" placeholder="用自己的语言，写下关键结论…"></textarea></label><div class="card-form-action"><button class="button small" :disabled="!!busy || !form.question.trim() || !form.answer.trim()">{{ busy === 'create' ? '正在保存…' : '添加复习卡' }}</button></div></form>
+    <form class="card-form" @submit.prevent="create"><label>复习问题<input v-model="form.question" required maxlength="2000" placeholder="这个片段解决了什么问题？" /></label><label>参考答案<textarea v-model="form.answer" required maxlength="5000" rows="3" placeholder="用自己的语言，写下关键结论…"></textarea></label><div class="card-form-action"><button class="button small" :disabled="!!busy || !form.question.trim() || !form.answer.trim()">{{ busy === 'create' ? '正在保存…' : '添加复习卡' }}</button></div></form>
     <button v-if="cards.length" class="text-link card-toggle" :aria-expanded="expanded" @click="expanded = !expanded">{{ expanded ? '收起' : '查看' }} {{ cards.length }} 张复习卡<Icon name="down" :size="12" /></button>
     <div v-if="expanded" class="card-list"><article v-for="card in cards" :key="card.id" class="study-card"><div class="card-header"><strong>{{ card.question }}</strong><button class="icon-button danger" :disabled="!!busy" :aria-label="`删除复习卡 ${card.question}`" @click="remove(card)"><Icon name="trash" :size="14" /></button></div><p v-if="shown.includes(card.id)" class="answer">{{ card.answer }}</p><div class="card-footer"><button class="text-link" @click="toggle(card.id)">{{ shown.includes(card.id) ? '隐藏答案' : '显示答案' }}</button><small>{{ card.repetitions }} 次复习 · 下次 {{ new Date(card.due_at).toLocaleDateString('zh-CN') }}</small></div></article></div>
     <div v-if="task.transcript" class="brief-export"><h4><Icon name="file" :size="15" />内容研究简报</h4><p>按本地字幕提取研究要点、原句与时间线索，便于项目评审。</p><a :href="`/api/knowledge/tasks/${task.id}/brief?format=markdown`" class="button small">导出研究简报</a><a :href="`/api/knowledge/tasks/${task.id}/brief?format=json`" class="text-link">JSON 数据</a></div>

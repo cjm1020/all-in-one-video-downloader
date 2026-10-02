@@ -24,24 +24,26 @@ const filtered = computed(() =>
 const selectedPosition = ref<number | null>(null)
 const reviewKey = ref(0)
 async function selectResult(id: string, position: number | null) {
-  selectedPosition.value = position
-  await select(id)
+  await select(id, position)
 }
-async function select(id: string) {
+async function select(id: string, position: number | null = null) {
   selected.value = id
   store.selectedLearning = id
+  detail.value = null
+  selectedPosition.value = null
   loading.value = true
   try {
     const value = await api<TaskDetail>(`/tasks/${id}`)
     if (selected.value === id) {
       detail.value = value
+      selectedPosition.value = position
       transcript.value = ''
       importing.value = false
     }
   } catch (e) {
     notify(message(e), true)
   } finally {
-    loading.value = false
+    if (selected.value === id) loading.value = false
   }
 }
 async function readFile(event: Event) {
@@ -65,6 +67,7 @@ async function importTranscript() {
     if (selected.value === id) {
       detail.value = value
       importing.value = false
+      reviewKey.value++
     }
     await refresh()
     notify('字幕已种进学习花园')
@@ -156,12 +159,13 @@ onMounted(() => {
     </aside>
     <section class="panel learning-content">
       <EmptyState
-        v-if="!detail"
+        v-if="!detail && !loading"
         icon="leaf"
         title="选一份内容，种下小收获"
         description="从左侧选择一个视频，导入字幕，整理属于你的学习资料卡。"
       />
-      <template v-else>
+      <p v-else-if="loading && !detail" class="muted no-results" role="status">正在加载学习资料…</p>
+      <template v-else-if="detail">
         <div class="learning-content-heading">
           <div>
             <span class="eyebrow">{{ detail.platform || 'YOUR COLLECTION' }}</span>
@@ -250,8 +254,8 @@ onMounted(() => {
               : '这个视频没有自动获取到字幕，可以导入 SRT、VTT 或 TXT；没有字幕时不会生成摘要。'
           "
         />
-        <TaskMarkers :task="detail" :position="selectedPosition" />
-        <StudyCards :task="detail" @changed="reviewKey++" />
+        <TaskMarkers :key="detail.id" :task="detail" :position="selectedPosition" />
+        <StudyCards :key="detail.id" :task="detail" @changed="reviewKey++" />
         <div v-if="detail.notes" class="learning-notes">
           <h3>
             <Icon name="file" :size="15" />
