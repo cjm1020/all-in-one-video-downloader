@@ -7,6 +7,7 @@ import ProjectItems from '../components/ProjectItems.vue'
 import RightsEditor from '../components/RightsEditor.vue'
 import DeliveryChecklist from '../components/DeliveryChecklist.vue'
 import DeliveryExports from '../components/DeliveryExports.vue'
+import WorkflowRecipes from '../components/WorkflowRecipes.vue'
 import { api, bytes, message, notify, statusLabels, store } from '../store'
 import { currency, localDate, projectStatus } from '../studio'
 import type { Project, ProjectDetail, ProjectItem } from '../studio'
@@ -96,6 +97,7 @@ onUnmounted(() => clearTimeout(refreshTimer))
     </section>
   </div>
   <section v-else class="panel"><EmptyState icon="folder" title="你的第一份交付，从这里开始" description="为客户或团队创建一个项目，挑选素材、补齐授权记录，再导出交付资料。"><button class="button small primary" @click="create"><Icon name="plus" :size="14" />创建第一个项目</button></EmptyState></section>
+  <WorkflowRecipes :projects="projects" @changed="reload" />
   <ProjectForm v-if="formOpen" :project="editing" @close="formOpen = false" @saved="saved" />
   <ProjectItems v-if="itemsOpen && detail" :project-id="detail.project.id" :task-ids="detail.items.map(t => t.id)" @close="itemsOpen = false" @saved="changed" />
   <RightsEditor v-if="rights" :item="rights" @close="rights = null" @saved="changed" />
