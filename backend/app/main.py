@@ -135,7 +135,7 @@ def task_detail(task_id: str):
     return require_task(task_id)
 
 
-@app.post("/api/tasks/{task_id}/{action}")
+@app.post("/api/tasks/{task_id}/actions/{action}")
 def task_action(task_id: str, action: str):
     require_task(task_id)
     actions = {
@@ -169,3 +169,8 @@ async def events(request: Request):
             await asyncio.sleep(1.5)
     return StreamingResponse(stream(), media_type="text/event-stream", headers={
         "Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
+
+
+from .library import router as library_router  # noqa: E402
+
+app.include_router(library_router)
