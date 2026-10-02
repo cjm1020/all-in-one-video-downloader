@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter
 from yt_dlp.version import __version__ as engine_version
 
-from . import db
+from . import __version__, db
 from .config import config
 from .models import SettingsUpdate
 
@@ -25,7 +25,7 @@ def worker_healthy() -> bool:
 def health():
     with db.connection() as conn:
         conn.execute("SELECT 1").fetchone()
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": __version__}
 
 
 @router.get("/status")

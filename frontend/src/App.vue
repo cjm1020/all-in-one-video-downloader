@@ -86,7 +86,7 @@ onMounted(initialize)
         <span class="avatar"><Icon name="sun" :size="18" /></span>
         <div>
           <strong>个人工作空间</strong>
-          <small>SELF-HOSTED · v1.0</small>
+          <small>SELF-HOSTED · v1.1</small>
         </div>
         <span class="online-dot" :class="{ offline: !store.status?.worker_online }"></span>
       </div>

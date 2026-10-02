@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from . import db
+from . import __version__, db
 from .config import config
 from .models import CreateTasks, InspectRequest
 from .security import validate_public_url
@@ -24,7 +24,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title="All-in-One Video Downloader", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="All-in-One Video Downloader", version=__version__, lifespan=lifespan)
 inspect_slots = asyncio.Semaphore(2)
 
 
