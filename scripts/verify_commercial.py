@@ -1,16 +1,17 @@
 """Exercise commercial APIs against a running instance without downloading media.
 
-Creates explicitly scheduled test data and removes all records it creates.
+Creates explicitly scheduled test data and removes its tasks, projects, and recipes.
+Audit events remain to preserve the truthful operation history.
 This proves workflow contracts and guards, not real video download or copyright ownership.
 """
 
 import argparse
-from datetime import datetime, timedelta, timezone
 import http.cookiejar
 import json
+import uuid
+from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError
 from urllib.request import HTTPCookieProcessor, Request, build_opener
-import uuid
 
 
 def main():
@@ -107,7 +108,7 @@ def main():
             if path:
                 try:
                     call("DELETE", path)
-                except Exception as exc:
+                except (OSError, RuntimeError, ValueError) as exc:
                     cleanup_errors.append(str(exc))
         if cleanup_errors:
             raise RuntimeError("Acceptance cleanup failed: " + "; ".join(cleanup_errors))
